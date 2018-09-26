@@ -3,5 +3,5 @@ dask
 requests
 pandas
 scipy
-iris
+boto3
 pytest

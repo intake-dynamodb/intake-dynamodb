@@ -1,19 +1,18 @@
-# intake-iris
+# intake-dynamodb
 
-[![Build Status](https://travis-ci.com/informatics-lab/intake-iris.svg?branch=master)](https://travis-ci.com/informatics-lab/intake-iris)
+[![Build Status](https://travis-ci.com/informatics-lab/intake-dynamodb.svg?branch=master)](https://travis-ci.com/informatics-lab/intake-dynamodb)
 
-Intake-iris: iris Plugin for [Intake](https://github.com/informatics-lab/intake-iris)
+Intake-dynamodb: dynamodb Plugin for [Intake](https://github.com/informatics-lab/intake-dynamodb)
 
 See [Intake docs](https://intake.readthedocs.io/en/latest/overview.html).
 
-In `intake-iris`, there are plugins provided for reading data into iris with.
-  - NetCDF
-  - GRIB
+In `intake-dynamodb`, there are plugins provided for reading data from dynamodb with.
+  - dynamodb
 
 ### Installation
 
 The conda install instructions are:
 
 ```
-conda install -c informaticslab intake-iris
+conda install -c informaticslab intake-dynamodb
 ```

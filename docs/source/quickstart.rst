@@ -1,35 +1,33 @@
 Quickstart
 ==========
 
-``intake-iris`` provides quick and easy access to stored in iris files.
+``intake-dynamodb`` provides quick and easy access to stored in dynamodb files.
 
-.. iris: https://scitools.org.uk/iris/docs/latest/
+.. dynamodb: https://aws.amazon.com/dynamodb/
 
 Installation
 ------------
 
 To use this plugin for `intake`_, install with the following command::
 
-   conda install -c informaticslab intake-iris
+   conda install -c informaticslab intake-dynamodb
 
 .. _intake: https://github.com/ContinuumIO/intake
 
 Usage
 -----
 
-Note that iris sources do not yet support streaming from an Intake server.
+Note that dynamodb sources do not yet support streaming from an Intake server.
 
 Ad-hoc
 ~~~~~~
 
-After installation, the functions ``intake.open_netcdf`` and ``intake.open_grib``
-will become available. They can be used to open iris datasets.
+After installation, the function ``intake.open_dynamodb`` will become available. They can be used to open dynamodb datasets.
 
 Creating Catalog Entries
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-Catalog entries must specify ``driver: netcdf`` or ``driver: grib``,
-as appropriate.
+Catalog entries must specify ``driver: dynamodb``.
 
 
 Using a Catalog

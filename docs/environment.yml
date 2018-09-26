@@ -1,4 +1,4 @@
-name: intake-iris
+name: intake-dynamodb
 channels:
   - intake
   - informaticslab
@@ -6,7 +6,8 @@ channels:
 dependencies:
   - python=3.6
   - intake
-  - intake-iris
+  - intake-dynamodb
+  - boto3
   - pip:
     - sphinx
     - sphinx-rtd-theme

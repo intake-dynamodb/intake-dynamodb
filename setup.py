@@ -6,15 +6,15 @@ import versioneer
 requires = open('requirements.txt').read().strip().split('\n')
 
 setup(
-    name='intake-iris',
+    name='intake-dynamodb',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
-    description='iris plugins for Intake',
-    url='https://github.com/informatics-lab/intake-iris',
+    description='dynamodb plugins for Intake',
+    url='https://github.com/informatics-lab/intake-dynamodb',
     maintainer='Jacob Tomlinson',
     maintainer_email='jacob.tomlinson@informaticslab.co.uk',
     license='BSD',
-    py_modules=['intake_iris'],
+    py_modules=['intake_dynamodb'],
     packages=find_packages(),
     package_data={'': ['*.csv', '*.yml', '*.html']},
     include_package_data=True,
