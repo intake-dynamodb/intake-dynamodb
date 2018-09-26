@@ -1,12 +1,9 @@
 
 # -*- coding: utf-8 -*-
-import numpy as np
 import os
 import pytest
 
 from intake import open_catalog
-from .util import dataset  # noqa
-
 from intake_dynamodb import DynamoDBSource
 
 
