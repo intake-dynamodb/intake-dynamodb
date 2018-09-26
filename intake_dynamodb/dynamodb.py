@@ -5,6 +5,7 @@ from intake.source.base import DataSource, Schema
 import json
 import dask.dataframe as dd
 from datetime import datetime, timedelta
+from time import sleep
 import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from botocore.exceptions import ClientError
@@ -31,6 +32,7 @@ class DynamoDBSource(DataSource):
         """
         self._table_name = table_name
         self._dataframe = None
+        self._dynamodb = boto3.resource('dynamodb')
 
     def _scan_table(self, table_name, filter_key=None, filter_value=None):
         """
@@ -38,7 +40,7 @@ class DynamoDBSource(DataSource):
         Can specify filter_key (col name) and its value to be filtered.
         """
         retries=0
-        table = dynamodb.Table(table_name)
+        table = self._dynamodb.Table(table_name)
         if filter_key is None or filter_value is None:
             response = table.scan()
         else:
