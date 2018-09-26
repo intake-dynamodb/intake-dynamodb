@@ -1,0 +1,9 @@
+plugins:
+  source:
+    - module: intake_dynamodb
+sources:
+  dynamodb_source:
+    description: example dynamodb source plugin
+    driver: dynamodb
+    args:
+      table_name: 'test'
