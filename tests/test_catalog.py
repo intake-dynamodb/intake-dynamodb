@@ -13,6 +13,6 @@ def catalog1():
     return open_catalog(os.path.join(path, 'data', 'catalog.yaml'))
 
 
-def test_catalog(catalog1, dataset):
+def test_catalog(catalog1):
     source = catalog1['dynamodb_source'].get()
     assert isinstance(source, DynamoDBSource)
