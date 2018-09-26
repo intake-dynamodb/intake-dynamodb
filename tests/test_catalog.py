@@ -4,8 +4,6 @@ import numpy as np
 import os
 import pytest
 
-from iris.cube import CubeList
-
 from intake import open_catalog
 from .util import dataset  # noqa
 
