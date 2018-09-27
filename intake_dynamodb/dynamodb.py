@@ -3,6 +3,7 @@ from . import __version__
 from intake.source.base import DataSource, Schema
 
 import json
+import pandas as pd
 import dask.dataframe as dd
 from datetime import datetime, timedelta
 from time import sleep
@@ -65,7 +66,10 @@ class DynamoDBSource(DataSource):
         return data
 
     def _open_dataset(self):
-        self._dataframe = dd.DataFrame.from_dict(self._scan_table(self.table_name)).set_index('key')
+        table_contents = self._scan_table(self._table_name)
+        table_dataframe = pd.DataFrame.from_dict(table_contents)
+        table_dataframe = table_dataframe.set_index('key')
+        self._dataframe = dd.from_pandas(table_dataframe)
 
     def _get_schema(self):
         if self._dataframe is None:
