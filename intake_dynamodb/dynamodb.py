@@ -33,6 +33,7 @@ class DynamoDBSource(DataSource):
         """
         self._table_name = table_name
         self._dataframe = None
+        self._npartitions = None
         self._dynamodb = boto3.resource('dynamodb')
 
     def _scan_table(self, table_name, filter_key=None, filter_value=None):
@@ -47,6 +48,7 @@ class DynamoDBSource(DataSource):
         else:
             response = table.scan(FilterExpression=Key(filter_key).eq(filter_value))
         data = response['Items']
+        self._npartitions = 1
 
         while 'LastEvaluatedKey' in response:
             try:
@@ -55,6 +57,7 @@ class DynamoDBSource(DataSource):
                 else:
                     response = table.scan(ExclusiveStartKey=response['LastEvaluatedKey'], FilterExpression=Key(filter_key).eq(filter_value))
                 data.extend(response['Items'])
+                self._npartitions += 1
                 retries = 0          # if successful, reset count
             except ClientError as err:
                 if err.response['Error']['Code'] not in RETRY_EXCEPTIONS:
@@ -69,7 +72,7 @@ class DynamoDBSource(DataSource):
         table_contents = self._scan_table(self._table_name)
         table_dataframe = pd.DataFrame.from_dict(table_contents)
         table_dataframe = table_dataframe.set_index('key')
-        self._dataframe = dd.from_pandas(table_dataframe)
+        self._dataframe = dd.from_pandas(table_dataframe, npartitions=self._npartitions)
 
     def _get_schema(self):
         if self._dataframe is None:
