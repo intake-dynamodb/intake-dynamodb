@@ -14,5 +14,5 @@ In `intake-dynamodb`, there are plugins provided for reading data from dynamodb 
 The conda install instructions are:
 
 ```
-conda install -c informaticslab intake-dynamodb
+conda install -c informaticslab -c intake intake-dynamodb
 ```
