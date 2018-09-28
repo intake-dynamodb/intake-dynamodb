@@ -10,7 +10,7 @@ Installation
 
 To use this plugin for `intake`_, install with the following command::
 
-   conda install -c informaticslab intake-dynamodb
+   conda install -c informaticslab -c intake intake_dynamodb
 
 .. _intake: https://github.com/ContinuumIO/intake
 

@@ -6,7 +6,7 @@ import versioneer
 requires = open('requirements.txt').read().strip().split('\n')
 
 setup(
-    name='intake-dynamodb',
+    name='intake_dynamodb',
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     description='dynamodb plugins for Intake',

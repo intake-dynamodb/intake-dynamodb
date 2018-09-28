@@ -6,7 +6,7 @@ Intake-dynamodb: dynamodb Plugin for [Intake](https://github.com/informatics-lab
 
 See [Intake docs](https://intake.readthedocs.io/en/latest/overview.html).
 
-In `intake-dynamodb`, there are plugins provided for reading data from dynamodb with.
+In `intake_dynamodb`, there are plugins provided for reading data from dynamodb with.
   - dynamodb
 
 ### Installation
@@ -14,5 +14,5 @@ In `intake-dynamodb`, there are plugins provided for reading data from dynamodb 
 The conda install instructions are:
 
 ```
-conda install -c informaticslab intake-dynamodb
+conda install -c informaticslab intake_dynamodb
 ```
