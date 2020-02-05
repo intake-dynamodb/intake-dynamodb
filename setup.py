@@ -16,6 +16,10 @@ setup(
     license='BSD',
     py_modules=['intake_dynamodb'],
     packages=find_packages(),
+    entry_points={
+        'intake.drivers': [
+            'dynamodb = intake_dynamodb.dynamodb:DynamoDBSource',
+        ]},
     package_data={'': ['*.csv', '*.yml', '*.html']},
     include_package_data=True,
     install_requires=requires,
