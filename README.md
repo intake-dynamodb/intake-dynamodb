@@ -16,3 +16,7 @@ The conda install instructions are:
 ```
 conda install -c informaticslab -c intake intake_dynamodb
 ```
+
+
+### Acknowledgements
+Developed in the [Met Office Informatics Lab](https://www.metoffice.gov.uk/research/foundation/informatics-lab/index).
