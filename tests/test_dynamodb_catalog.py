@@ -23,10 +23,16 @@ def example_table(dynamodb):
     dynamodb.put_item(
         TableName=table_name, Item={"id": {"S": "1"}, "name": {"S": "John Doe"}}
     )
+    dynamodb.put_item(
+        TableName=table_name, Item={"id": {"S": "2"}, "name": {"S": "Jill Doe"}}
+    )
 
 
 def test_dynamodb_source(example_table):
     source = DynamoDBSource(table_name="example-table", dynamodb=example_table)
-    print(source)
+    assert isinstance(source, DynamoDBSource)
+    # print(source)
+    print(source._scan_table())
+
     # source = catalog1['dynamodb_source'].get()
     # assert isinstance(source, DynamoDBSource)

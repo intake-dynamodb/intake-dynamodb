@@ -71,22 +71,21 @@ class DynamoDBSource(DataSource):
                     aws_access_key_id=creds["AccessKeyId"],
                     aws_secret_access_key=creds["SecretAccessKey"],
                     aws_session_token=creds["SessionToken"],
-                    region_name="eu-west-1",
+                    region_name=self.region_name,
                 )
 
     def _scan_table(
         self,
-        table_name: str,
         filter_key: Optional[str] = None,
         filter_value: Optional[Any] = None,
-    ):
+    ) -> list[dict[Any, Any]]:
         """
         Perform a scan operation on table.
         Can specify filter_key (col name) and its value to be filtered.
         """
         self._connect()
         retries = 0
-        table = self.dynamodb.Table(table_name)
+        table = self.dynamodb.Table(self.table_name)
         if filter_key is None and filter_value is None:
             response = table.scan()
         else:
@@ -124,10 +123,10 @@ class DynamoDBSource(DataSource):
         self.dataframe = dd.from_pandas(table_dataframe, npartitions=self.npartitions)
 
     def _get_schema(self):
-        if self._dataframe is None:
+        if self.dataframe is None:
             self._open_dataset()
 
-        dtypes = self._dataframe._meta.dtypes.to_dict()
+        dtypes = self.dataframe._meta.dtypes.to_dict()
         dtypes = {n: str(t) for (n, t) in dtypes.items()}
         return Schema(
             datashape=None,
