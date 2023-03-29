@@ -118,8 +118,8 @@ class DynamoDBSource(DataSource):
 
     def _open_dataset(self):
         table_contents = self._scan_table(self.table_name)
-        table_dataframe = pd.DataFrame.from_dict(table_contents)
-        table_dataframe = table_dataframe.set_index("key")
+        # Put into dask.dataframe first...
+        # table_dataframe = pd.DataFrame(table_contents)
         self.dataframe = dd.from_pandas(table_dataframe, npartitions=self.npartitions)
 
     def _get_schema(self):
@@ -140,13 +140,13 @@ class DynamoDBSource(DataSource):
         self._get_schema()
         return self.dataframe.get_partition(i).compute()
 
-    def read(self):
-        self._get_schema()
-        return self.dataframe.compute()
-
     def to_dask(self):
         self._get_schema()
         return self.dataframe
+
+    def read(self):
+        self._get_schema()
+        return self.dataframe.compute()
 
     def _close(self):
         self.dataframe = None
