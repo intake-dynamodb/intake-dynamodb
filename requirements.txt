@@ -1,7 +1,3 @@
-intake
-dask
-requests
-pandas
-scipy
 boto3
-pytest
+dask[dataframe]
+intake

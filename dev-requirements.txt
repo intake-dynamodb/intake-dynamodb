@@ -1,0 +1,7 @@
+black
+moto[dynamodb,server]
+mypy
+pre-commit
+pytest
+ruff
+yamllint
