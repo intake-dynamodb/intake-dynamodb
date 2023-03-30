@@ -1,14 +1,14 @@
+from __future__ import annotations
+
+from time import sleep
 from typing import Any, Optional
 
-from intake.source.base import DataSource, Schema
-
-import pandas as pd
-import dask.dataframe as dd
-from time import sleep
 import boto3
-from boto3.dynamodb.conditions import Key
+import dask.bag as db
+import dask.dataframe as dd
+import pandas as pd
 from botocore.exceptions import ClientError
-
+from intake.source.base import DataSource, Schema
 
 RETRY_EXCEPTIONS = ("ProvisionedThroughputExceededException", "ThrottlingException")
 MAX_RETRIES = 30
@@ -27,6 +27,8 @@ class DynamoDBSource(DataSource):
         dynamodb: Optional[boto3.resources.base.ServiceResource] = None,
         sts_role_arn: Optional[str] = None,
         region_name: Optional[str] = None,
+        filter_expression: Optional[str] = None,
+        filter_expression_value: Optional[Any] = None,
         **kwargs,
     ):
         """
@@ -41,22 +43,24 @@ class DynamoDBSource(DataSource):
         region_name: str (optional)
             The region of the DynamoDB table if reading a DynamoDB table in another
             AWS account.
+        filter_expression: str (optional)
+            Filter expression to pass to table.scan() e.g. 'age = :age_threshold'
+        filter_expression_value: Any (optional)
+            Value used in filter_expression such as 30
         """
         self.table_name = table_name
         self.dynamodb = dynamodb
         self.sts_role_arn = sts_role_arn
         self.region_name = region_name
+        self.filter_expression = filter_expression
+        self.filter_expression_value = filter_expression_value
 
-        self.dataframe = None
-        self.npartitions = None
         self.metadata = kwargs.pop("metadata", {})
 
     def _connect(
         self,
     ):
-        if self.dynamodb is not None:
-            pass
-        else:
+        if self.dynamodb is None:
             if self.sts_role_arn is None and self.region_name is None:
                 self.dynamodb = boto3.resource("dynamodb")
             else:
@@ -76,35 +80,39 @@ class DynamoDBSource(DataSource):
 
     def _scan_table(
         self,
-        filter_key: Optional[str] = None,
-        filter_value: Optional[Any] = None,
     ) -> list[dict[str, Any]]:
-        """
-        Perform a scan operation on table.
-        Can specify filter_key (col name) and its value to be filtered.
-        """
+        """Perform a scan operation on table and optionally filter."""
         self._connect()
         retries = 0
-        table = self.dynamodb.Table(self.table_name)
-        if filter_key is None and filter_value is None:
+        table = self.dynamodb.Table(self.table_name)  # type: ignore[union-attr]
+        _no_filter = (
+            self.filter_expression is None and self.filter_expression_value is None
+        )
+        if _no_filter:
             response = table.scan()
         else:
-            response = table.scan(FilterExpression=Key(filter_key).eq(filter_value))
-        data = response["Items"]
+            _key = self.filter_expression.split(" ")[-1]  # type: ignore[union-attr]
+            _expression_attribute_values = {_key: self.filter_expression_value}
+            response = table.scan(
+                FilterExpression=self.filter_expression,
+                ExpressionAttributeValues=_expression_attribute_values,
+            )
+        items = response["Items"]
         self.npartitions = 1
 
         while "LastEvaluatedKey" in response:
             try:
-                if filter_key is None or filter_value is None:
+                if _no_filter:
                     response = table.scan(
                         ExclusiveStartKey=response["LastEvaluatedKey"]
                     )
                 else:
                     response = table.scan(
                         ExclusiveStartKey=response["LastEvaluatedKey"],
-                        FilterExpression=Key(filter_key).eq(filter_value),
+                        FilterExpression=self.filter_expression,
+                        ExpressionAttributeValues=_expression_attribute_values,
                     )
-                data.extend(response["Items"])
+                items.extend(response["Items"])
                 self.npartitions += 1
                 retries = 0  # if successful, reset count
             except ClientError as err:
@@ -113,19 +121,11 @@ class DynamoDBSource(DataSource):
                 sleep(2**retries)
                 if retries < MAX_RETRIES:
                     retries += 1  # TODO max limit
-        # print(self.npartitions)
-        return data
-
-    def _open_dataset(self):
-        table_contents = self._scan_table(self.table_name)
-        # print(self.npartitions)
-        # Put into dask.dataframe first...
-        # table_dataframe = pd.DataFrame(table_contents)
-        self.dataframe = dd.from_pandas(table_dataframe, npartitions=self.npartitions)
+        return items
 
     def _get_schema(self):
         if self.dataframe is None:
-            self._open_dataset()
+            self.to_dask()
 
         dtypes = self.dataframe._meta.dtypes.to_dict()
         dtypes = {n: str(t) for (n, t) in dtypes.items()}
@@ -137,15 +137,19 @@ class DynamoDBSource(DataSource):
             extra_metadata={},
         )
 
-    def _get_partition(self, i: int):
+    def _get_partition(self, i: int) -> pd.DataFrame:
         self._get_schema()
         return self.dataframe.get_partition(i).compute()
 
-    def to_dask(self):
-        self._get_schema()
+    def to_dask(self) -> dd.DataFrame:
+        table_items = self._scan_table()
+        self.dataframe = db.from_sequence(
+            table_items,
+            npartitions=self.npartitions,
+        ).to_dataframe()
         return self.dataframe
 
-    def read(self):
+    def read(self) -> dd.DataFrame:
         self._get_schema()
         return self.dataframe.compute()
 

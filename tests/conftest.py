@@ -1,6 +1,6 @@
 import boto3
-from moto import mock_dynamodb
 import pytest
+from moto import mock_dynamodb
 
 
 @pytest.fixture(scope="function")
