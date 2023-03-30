@@ -78,7 +78,7 @@ class DynamoDBSource(DataSource):
         self,
         filter_key: Optional[str] = None,
         filter_value: Optional[Any] = None,
-    ) -> list[dict[Any, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Perform a scan operation on table.
         Can specify filter_key (col name) and its value to be filtered.
@@ -113,11 +113,12 @@ class DynamoDBSource(DataSource):
                 sleep(2**retries)
                 if retries < MAX_RETRIES:
                     retries += 1  # TODO max limit
-
+        # print(self.npartitions)
         return data
 
     def _open_dataset(self):
         table_contents = self._scan_table(self.table_name)
+        # print(self.npartitions)
         # Put into dask.dataframe first...
         # table_dataframe = pd.DataFrame(table_contents)
         self.dataframe = dd.from_pandas(table_dataframe, npartitions=self.npartitions)

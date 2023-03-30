@@ -1,5 +1,5 @@
 black
-moto[dynamodb,server]
+moto[dynamodb]
 mypy
 pre-commit
 pytest
