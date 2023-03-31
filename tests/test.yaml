@@ -20,3 +20,10 @@ sources:
     driver: dynamodb
     args:
       table_name: 'example-big-table'
+  example_small_table_different_account:
+    description: example small dynamodb table in a different AWS account
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table-different-account'
+      sts_role_arn: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME'
+      region_name: 'us-west-2'

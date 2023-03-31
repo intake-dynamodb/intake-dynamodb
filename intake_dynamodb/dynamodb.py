@@ -10,7 +10,10 @@ import pandas as pd
 from botocore.exceptions import ClientError
 from intake.source.base import DataSource, Schema
 
-RETRY_EXCEPTIONS = ("ProvisionedThroughputExceededException", "ThrottlingException")
+RETRY_EXCEPTIONS = (
+    "ProvisionedThroughputExceededException",
+    "ThrottlingException",
+)
 MAX_RETRIES = 30
 
 
@@ -24,7 +27,6 @@ class DynamoDBSource(DataSource):
     def __init__(
         self,
         table_name: str,
-        dynamodb: Optional[boto3.resources.base.ServiceResource] = None,
         sts_role_arn: Optional[str] = None,
         region_name: Optional[str] = None,
         filter_expression: Optional[str] = None,
@@ -36,8 +38,6 @@ class DynamoDBSource(DataSource):
         ----------
         table_name: str
             The DynamoDB table to load.
-        dynamodb: boto3.resources.factory.dynamodb.ServiceResource (optional)
-            The dynamodb resource if already defined.
         sts_role_arn: str (optional)
             STS RoleArn if reading a DynamoDB table in another AWS account.
         region_name: str (optional)
@@ -49,7 +49,6 @@ class DynamoDBSource(DataSource):
             Value used in filter_expression such as 30
         """
         self.table_name = table_name
-        self.dynamodb = dynamodb
         self.sts_role_arn = sts_role_arn
         self.region_name = region_name
         self.filter_expression = filter_expression
@@ -60,23 +59,22 @@ class DynamoDBSource(DataSource):
     def _connect(
         self,
     ):
-        if self.dynamodb is None:
-            if self.sts_role_arn is None and self.region_name is None:
-                self.dynamodb = boto3.resource("dynamodb")
-            else:
-                self.sts = boto3.client("sts")
-                _sts_session = self.sts.assume_role(
-                    RoleArn=self.sts_role_arn,
-                    RoleSessionName="session",
-                )
-                creds = _sts_session["Credentials"]
-                self.dynamodb = boto3.resource(
-                    "dynamodb",
-                    aws_access_key_id=creds["AccessKeyId"],
-                    aws_secret_access_key=creds["SecretAccessKey"],
-                    aws_session_token=creds["SessionToken"],
-                    region_name=self.region_name,
-                )
+        if self.sts_role_arn is None and self.region_name is None:
+            self.dynamodb = boto3.resource("dynamodb")
+        else:
+            self.sts = boto3.client("sts")
+            _sts_session = self.sts.assume_role(
+                RoleArn=self.sts_role_arn,
+                RoleSessionName="session",
+            )
+            creds = _sts_session["Credentials"]
+            self.dynamodb = boto3.resource(
+                "dynamodb",
+                aws_access_key_id=creds["AccessKeyId"],
+                aws_secret_access_key=creds["SecretAccessKey"],
+                aws_session_token=creds["SessionToken"],
+                region_name=self.region_name,
+            )
 
     def _scan_table(
         self,
