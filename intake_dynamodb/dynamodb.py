@@ -123,8 +123,8 @@ class DynamoDBSource(DataSource):
                     retries += 1  # TODO max limit
         return items
 
-    def _get_schema(self):
-        if self.dataframe is None:
+    def _get_schema(self) -> Schema:
+        if not hasattr(self, "dataframe"):
             self.to_dask()
 
         dtypes = self.dataframe._meta.dtypes.to_dict()
@@ -149,9 +149,9 @@ class DynamoDBSource(DataSource):
         ).to_dataframe()
         return self.dataframe
 
-    def read(self) -> dd.DataFrame:
+    def read(self) -> pd.DataFrame:
         self._get_schema()
         return self.dataframe.compute()
 
-    def _close(self):
+    def _close(self) -> None:
         self.dataframe = None

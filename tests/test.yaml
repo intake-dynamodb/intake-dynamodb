@@ -1,0 +1,22 @@
+---
+metadata:
+  version: 1
+
+sources:
+  example_small_table:
+    description: example small dynamodb table
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+  example_small_table_filtered:
+    description: example small dynamodb table
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+      filter_expression: 'age = :age_value'
+      filter_expression_value: 30
+  example_big_table:
+    description: example big dynamodb table
+    driver: dynamodb
+    args:
+      table_name: 'example-big-table'

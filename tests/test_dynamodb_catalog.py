@@ -1,25 +1,21 @@
-import os
 import random
 from decimal import Decimal
 
+import botocore
 import dask.bag as db
+import dask.dataframe as dd
+import intake
+import pandas as pd
 import pandas._testing as pd_testing
 import pytest
 from dask.dataframe.utils import assert_eq as dask_dataframe_assert_eq
-from intake import open_catalog
 
 from intake_dynamodb import DynamoDBSource
 
 
-@pytest.fixture
-def catalog1():
-    path = os.path.dirname(__file__)
-    return open_catalog(os.path.join(path, "data", "catalog.yaml"))
-
-
 @pytest.fixture(scope="function")
-def example_small_table(dynamodb):
-    table_name = "example-table"
+def example_small_table(dynamodb: botocore.client.BaseClient) -> None:
+    table_name = "example-small-table"
     dynamodb.create_table(
         TableName=table_name,
         KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
@@ -38,8 +34,19 @@ def example_small_table(dynamodb):
 
 
 @pytest.fixture(scope="function")
-def example_big_table(dynamodb):
-    table_name = "example-table"
+def example_small_table_expected_ddf() -> dd.DataFrame:
+    return db.from_sequence(
+        [
+            {"id": "0", "name": "John Doe", "age": Decimal("30")},
+            {"id": "1", "name": "Jill Doe", "age": Decimal("31")},
+        ],
+        npartitions=1,
+    ).to_dataframe()
+
+
+@pytest.fixture(scope="function")
+def example_big_table(dynamodb: botocore.client.BaseClient) -> None:
+    table_name = "example-big-table"
     dynamodb.create_table(
         TableName=table_name,
         KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
@@ -47,7 +54,7 @@ def example_big_table(dynamodb):
         BillingMode="PAY_PER_REQUEST",
     )
     names = ["John Doe", "Jill Doe"]
-    for i in range(0, 50_000):
+    for i in range(0, 45_000):
         dynamodb.put_item(
             TableName=table_name,
             Item={
@@ -58,13 +65,22 @@ def example_big_table(dynamodb):
         )
 
 
+@pytest.fixture
+def yaml_catalog():
+    return intake.open_catalog("tests/test.yaml")
+
+
 def test_dynamodb_source(example_small_table):
-    source = DynamoDBSource(table_name="example-table", dynamodb=example_small_table)
+    source = DynamoDBSource(
+        table_name="example-small-table", dynamodb=example_small_table
+    )
     assert isinstance(source, DynamoDBSource)
 
 
 def test_dynamodb_scan(example_small_table):
-    source = DynamoDBSource(table_name="example-table", dynamodb=example_small_table)
+    source = DynamoDBSource(
+        table_name="example-small-table", dynamodb=example_small_table
+    )
     items = source._scan_table()
     assert items == [
         {"id": "0", "name": "John Doe", "age": Decimal("30")},
@@ -72,42 +88,81 @@ def test_dynamodb_scan(example_small_table):
     ]
 
 
-def test_dynamodb_scan_with_filter(example_small_table):
+def test_dynamodb_scan_filtered(example_small_table):
     source = DynamoDBSource(
-        table_name="example-table",
+        table_name="example-small-table",
         dynamodb=example_small_table,
         filter_expression="age = :age_value",
         filter_expression_value=30,
     )
     items = source._scan_table()
-    assert items == [{"id": "0", "name": "John Doe", "age": Decimal("30")}]
+    assert items == [
+        {"id": "0", "name": "John Doe", "age": Decimal("30")},
+    ]
 
 
-def test_dynamodb_to_dask(example_small_table):
-    source = DynamoDBSource(table_name="example-table", dynamodb=example_small_table)
+def test_dynamodb_to_dask(example_small_table, example_small_table_expected_ddf):
+    source = DynamoDBSource(
+        table_name="example-small-table", dynamodb=example_small_table
+    )
     actual_ddf = source.to_dask()
-    expected_ddf = db.from_sequence(
+    dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
+
+
+def test_dynamodb_read(example_small_table, example_small_table_expected_ddf):
+    source = DynamoDBSource(
+        table_name="example-small-table", dynamodb=example_small_table
+    )
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_expected_ddf.compute(),
+    )
+
+
+def test_dynamodb_to_paritioned_dask(example_big_table):
+    source = DynamoDBSource(
+        table_name="example-big-table",
+        dynamodb=example_big_table,
+    )
+    ddf = source.to_dask()
+    assert ddf.npartitions == 2
+
+
+def test_yaml_small_table(
+    yaml_catalog,
+    example_small_table,
+    example_small_table_expected_ddf,
+):
+    source = yaml_catalog.example_small_table
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_expected_ddf.compute(),
+    )
+
+
+def test_yaml_small_table_filtered(
+    yaml_catalog,
+    example_small_table,
+):
+    source = yaml_catalog.example_small_table_filtered
+    actual_df = source.read()
+    expected_df = pd.DataFrame(
         [
             {"id": "0", "name": "John Doe", "age": Decimal("30")},
-            {"id": "1", "name": "Jill Doe", "age": Decimal("31")},
-        ],
-        npartitions=1,
-    ).to_dataframe()
-    dask_dataframe_assert_eq(actual_ddf, expected_ddf)
-
-
-def test_dynamodb_read(example_small_table):
-    source = DynamoDBSource(table_name="example-table", dynamodb=example_small_table)
-    actual_df = source.read()
-    expected_df = (
-        db.from_sequence(
-            [
-                {"id": "0", "name": "John Doe", "age": Decimal("30")},
-                {"id": "1", "name": "Jill Doe", "age": Decimal("31")},
-            ],
-            npartitions=1,
-        )
-        .to_dataframe()
-        .compute()
+        ]
     )
-    pd_testing.assert_equal(actual_df, expected_df)
+    pd_testing.assert_equal(
+        actual_df,
+        expected_df,
+    )
+
+
+def test_yaml_big_table(
+    yaml_catalog,
+    example_big_table,
+):
+    source = yaml_catalog.example_big_table
+    ddf = source.to_dask()
+    assert ddf.npartitions == 2
