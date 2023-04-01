@@ -7,8 +7,10 @@ import boto3
 import dask.bag as db
 import dask.dataframe as dd
 import pandas as pd
+import s3fs
 from botocore.exceptions import ClientError
 from intake.source.base import DataSource, Schema
+from intake.source.jsonfiles import JSONFileSource, JSONLinesFileSource
 
 RETRY_EXCEPTIONS = (
     "ProvisionedThroughputExceededException",
@@ -18,7 +20,7 @@ MAX_RETRIES = 30
 
 
 class DynamoDBSource(DataSource):
-    """Common behaviours for plugins in this repo"""
+    """Extracting data from AWS DynamoDB"""
 
     container = "dataframe"
     name = "dynamodb"
@@ -153,3 +155,58 @@ class DynamoDBSource(DataSource):
 
     def _close(self) -> None:
         self.dataframe = None
+
+
+class DynamoDBJSONSource(DataSource):
+    """Extracting data from AWS DynamoDBJSON e.g.
+    after an s3 export"""
+
+    container = "dataframe"
+    name = "dynamodbjson"
+    partition_access = True
+
+    def __init__(
+        self,
+        s3_path: str,
+        storage_options: Optional[dict] = {},
+        **kwargs,
+    ):
+        """
+        Parameters
+        ----------
+        s3_path: str
+            top directory of the dynamodb s3 export dump. usually as hash
+            such as "s3://BUCKET/0123456789-abcdefg".
+        storage_options: dict (optional)
+            options for the s3 path e.g. {"profile": "dev"}
+        """
+        self.s3_path = s3_path
+        self.storage_options = storage_options
+
+    def _s3_path_properties(self):
+        manifest_summary_json = JSONFileSource(
+            self.s3_path,
+            storage_options=self.storage_options,
+        )
+        self.export_time = manifest_summary_json.read()["exportTime"]
+        self.data_jsonlines_files = s3fs.S3FileSystem(self.storage_options).ls(
+            f"{self.s3_path}/data/"
+        )
+
+    def _get_schema(self) -> Schema:
+        if not hasattr(self, "dataframe"):
+            self.to_dask()
+
+        dtypes = self.dataframe._meta.dtypes.to_dict()
+        dtypes = {n: str(t) for (n, t) in dtypes.items()}
+        return Schema(
+            datashape=None,
+            dtype=dtypes,
+            shape=(None, len(dtypes)),
+            npartitions=self.dataframe.npartitions,
+            extra_metadata={},
+        )
+
+    def to_dask(self) -> dd.DataFrame:
+        self._s3_path_properties()
+        # map JSONLinesFileSource to the individual files
