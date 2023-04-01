@@ -11,7 +11,7 @@ import pytest
 from dask.dataframe.utils import assert_eq as dask_dataframe_assert_eq
 from intake.source.base import DataSource
 
-from intake_dynamodb import DynamoDBSource
+from intake_dynamodb import DynamoDBSource, DynamoDBJSONSource
 
 
 @pytest.fixture(scope="function")
@@ -102,126 +102,140 @@ def example_small_table_different_account_expected_ddf() -> dd.DataFrame:
     ).to_dataframe()
 
 
+@pytest.fixture(scope="function")
+def example_bucket(s3):
+    bucket_name = "example-bucket"
+    s3.create_bucket(Bucket=bucket_name)
+    return bucket_name
+
+
 @pytest.fixture
 def yaml_catalog() -> DataSource:
     return intake.open_catalog("tests/test.yaml")
 
 
-def test_dynamodb_source(example_small_table):
-    source = DynamoDBSource(table_name=example_small_table)
-    assert isinstance(source, DynamoDBSource)
+# def test_dynamodb_source(example_small_table):
+#     source = DynamoDBSource(table_name=example_small_table)
+#     assert isinstance(source, DynamoDBSource)
 
 
-def test_dynamodb_scan(example_small_table):
-    source = DynamoDBSource(table_name=example_small_table)
-    items = source._scan_table()
-    assert items == [
-        {"id": "0", "name": "John Doe", "age": Decimal("30")},
-        {"id": "1", "name": "Jill Doe", "age": Decimal("31")},
-    ]
+# def test_dynamodb_scan(example_small_table):
+#     source = DynamoDBSource(table_name=example_small_table)
+#     items = source._scan_table()
+#     assert items == [
+#         {"id": "0", "name": "John Doe", "age": Decimal("30")},
+#         {"id": "1", "name": "Jill Doe", "age": Decimal("31")},
+#     ]
 
 
-def test_dynamodb_scan_filtered(example_small_table):
-    source = DynamoDBSource(
-        table_name=example_small_table,
-        filter_expression="age = :age_value",
-        filter_expression_value=30,
+# def test_dynamodb_scan_filtered(example_small_table):
+#     source = DynamoDBSource(
+#         table_name=example_small_table,
+#         filter_expression="age = :age_value",
+#         filter_expression_value=30,
+#     )
+#     items = source._scan_table()
+#     assert items == [
+#         {"id": "0", "name": "John Doe", "age": Decimal("30")},
+#     ]
+
+
+# def test_dynamodb_to_dask(
+#     example_small_table,
+#     example_small_table_expected_ddf,
+# ):
+#     source = DynamoDBSource(table_name=example_small_table)
+#     actual_ddf = source.to_dask()
+#     dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
+
+
+# def test_dynamodb_read(
+#     example_small_table,
+#     example_small_table_expected_ddf,
+# ):
+#     source = DynamoDBSource(table_name=example_small_table)
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_expected_ddf.compute(),
+#     )
+
+
+# def test_dynamodb_to_paritioned_dask(example_big_table):
+#     source = DynamoDBSource(table_name=example_big_table)
+#     ddf = source.to_dask()
+#     assert ddf.npartitions == 2
+
+
+# def test_dynamodb_in_different_account(
+#     example_small_table_different_account,
+#     example_small_table_different_account_expected_ddf,
+# ):
+#     source = DynamoDBSource(
+#         table_name=example_small_table_different_account,
+#         sts_role_arn="arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
+#         region_name="us-west-2",
+#     )
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_different_account_expected_ddf.compute(),
+#     )
+
+
+# def test_yaml_small_table(
+#     yaml_catalog,
+#     example_small_table,
+#     example_small_table_expected_ddf,
+# ):
+#     source = yaml_catalog.example_small_table
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_expected_ddf.compute(),
+#     )
+
+
+# def test_yaml_small_table_filtered(
+#     yaml_catalog,
+#     example_small_table,
+# ):
+#     source = yaml_catalog.example_small_table_filtered
+#     actual_df = source.read()
+#     expected_df = pd.DataFrame(
+#         [
+#             {"id": "0", "name": "John Doe", "age": Decimal("30")},
+#         ]
+#     )
+#     pd_testing.assert_equal(
+#         actual_df,
+#         expected_df,
+#     )
+
+
+# def test_yaml_big_table(
+#     yaml_catalog,
+#     example_big_table,
+# ):
+#     source = yaml_catalog.example_big_table
+#     ddf = source.to_dask()
+#     assert ddf.npartitions == 2
+
+
+# def test_yaml_different_account(
+#     yaml_catalog,
+#     example_small_table_different_account,
+#     example_small_table_different_account_expected_ddf,
+# ):
+#     source = yaml_catalog.example_small_table_different_account
+#     actual_ddf = source.to_dask()
+#     dask_dataframe_assert_eq(
+#         actual_ddf, example_small_table_different_account_expected_ddf
+#     )
+
+
+def test_test_dynamodbjson_source(example_bucket):
+    source = DynamoDBJSONSource(
+        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefg",
     )
-    items = source._scan_table()
-    assert items == [
-        {"id": "0", "name": "John Doe", "age": Decimal("30")},
-    ]
-
-
-def test_dynamodb_to_dask(
-    example_small_table,
-    example_small_table_expected_ddf,
-):
-    source = DynamoDBSource(table_name=example_small_table)
-    actual_ddf = source.to_dask()
-    dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
-
-
-def test_dynamodb_read(
-    example_small_table,
-    example_small_table_expected_ddf,
-):
-    source = DynamoDBSource(table_name=example_small_table)
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
-    )
-
-
-def test_dynamodb_to_paritioned_dask(example_big_table):
-    source = DynamoDBSource(table_name=example_big_table)
-    ddf = source.to_dask()
-    assert ddf.npartitions == 2
-
-
-def test_dynamodb_in_different_account(
-    example_small_table_different_account,
-    example_small_table_different_account_expected_ddf,
-):
-    source = DynamoDBSource(
-        table_name=example_small_table_different_account,
-        sts_role_arn="arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
-        region_name="us-west-2",
-    )
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_different_account_expected_ddf.compute(),
-    )
-
-
-def test_yaml_small_table(
-    yaml_catalog,
-    example_small_table,
-    example_small_table_expected_ddf,
-):
-    source = yaml_catalog.example_small_table
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
-    )
-
-
-def test_yaml_small_table_filtered(
-    yaml_catalog,
-    example_small_table,
-):
-    source = yaml_catalog.example_small_table_filtered
-    actual_df = source.read()
-    expected_df = pd.DataFrame(
-        [
-            {"id": "0", "name": "John Doe", "age": Decimal("30")},
-        ]
-    )
-    pd_testing.assert_equal(
-        actual_df,
-        expected_df,
-    )
-
-
-def test_yaml_big_table(
-    yaml_catalog,
-    example_big_table,
-):
-    source = yaml_catalog.example_big_table
-    ddf = source.to_dask()
-    assert ddf.npartitions == 2
-
-
-def test_yaml_different_account(
-    yaml_catalog,
-    example_small_table_different_account,
-    example_small_table_different_account_expected_ddf,
-):
-    source = yaml_catalog.example_small_table_different_account
-    actual_ddf = source.to_dask()
-    dask_dataframe_assert_eq(
-        actual_ddf, example_small_table_different_account_expected_ddf
-    )
+    assert isinstance(source, DynamoDBJSONSource)

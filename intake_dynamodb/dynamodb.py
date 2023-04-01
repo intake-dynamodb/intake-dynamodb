@@ -175,9 +175,8 @@ class DynamoDBJSONSource(DataSource):
         Parameters
         ----------
         s3_path: str
-            top directory of the dynamodb s3 export dump. usually as hash
-            such as "s3://BUCKET/AWSDynamoDB/0123456789-abcdefg".
-            The suffix is the hash of the dump.
+            s3 path of the dynamodb s3 export dump. usually contains hash
+            e.g. "s3://BUCKET/AWSDynamoDB/0123456789-abcdefg".
         storage_options: dict (optional)
             options for the s3 path e.g. {"profile": "dev"}
         """
@@ -187,15 +186,28 @@ class DynamoDBJSONSource(DataSource):
         self.metadata = kwargs.pop("metadata", {})
 
     def _s3_path_properties(self):
+        self.s3_bucket = self.s3_path.split("//")[-1].split("/")[0]
         manifest_summary_json = JSONFileSource(
             f"{self.s3_path}/manifest-summary.json",
             storage_options=self.storage_options,
         )
         self.export_time = manifest_summary_json.read()["exportTime"]
-        manifest_files_json = JSONLinesFileSource(
+        manifest_files_jsonl = JSONLinesFileSource(
             f"{self.s3_path}/manifest-files.json",
             storage_options=self.storage_options,
         )
+        manifest_files_jsonl_data = manifest_files_jsonl.read()
+        self.data_files = []
+        for file in manifest_files_jsonl_data:
+            self.data_files.append(f"s3://{self.s3_bucket}/{file['dataFileS3Key']}")
+        self.npartitions = len(self.data_files)
+
+    def _parse_dynamodbjson(self, data_file: str) -> pd.DataFrame:
+        data = JSONLinesFileSource(data_file, storage_options=self.storage_options)
+        data = list(map(lambda x: x["Item"], data))
+        df = pd.json_normalize(data)
+        df.columns = df.columns.str.replace(".S", "").str.replace(".N", "")
+        return df
 
     def _get_schema(self) -> Schema:
         if not hasattr(self, "dataframe"):
@@ -213,4 +225,11 @@ class DynamoDBJSONSource(DataSource):
 
     def to_dask(self) -> dd.DataFrame:
         self._s3_path_properties()
-        # map JSONLinesFileSource to the individual files
+        self.dataframe = dd.from_delayed(
+            [self._parse_dynamodbjson(data_file) for data_file in self.data_files]
+        )
+        return self.dataframe
+
+    def read(self) -> pd.DataFrame:
+        self._get_schema()
+        return self.dataframe.compute()

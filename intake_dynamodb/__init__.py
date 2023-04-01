@@ -1,4 +1,4 @@
-from .dynamodb import DynamoDBSource  # noqa
+from .dynamodb import DynamoDBSource, DynamoDBJSONSource  # noqa
 
 
-__version__ = "2023.3.0"
+__version__ = "2023.4.0"
