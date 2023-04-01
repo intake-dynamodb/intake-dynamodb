@@ -1,26 +1,2 @@
-{
-    "Item": {
-        "id": {
-            "S": "0"
-        },
-        "name": {
-            "S": "John Doe"
-        },
-        "age": {
-            "N": "30"
-        }
-    }
-}
-{
-    "Item": {
-        "id": {
-            "S": "1"
-        },
-        "name": {
-            "S": "Jill Doe"
-        },
-        "age": {
-            "N": "31"
-        }
-    }
-}
+{"Item":{"id":{"S":"0"},"name":{"S":"John Doe"},"age":{"N":"30"}}}
+{"Item":{"id":{"S":"1"},"name":{"S":"Jill Doe"},"age":{"N":"31"}}}

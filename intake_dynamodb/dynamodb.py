@@ -176,21 +176,25 @@ class DynamoDBJSONSource(DataSource):
         ----------
         s3_path: str
             top directory of the dynamodb s3 export dump. usually as hash
-            such as "s3://BUCKET/0123456789-abcdefg".
+            such as "s3://BUCKET/AWSDynamoDB/0123456789-abcdefg".
+            The suffix is the hash of the dump.
         storage_options: dict (optional)
             options for the s3 path e.g. {"profile": "dev"}
         """
         self.s3_path = s3_path
         self.storage_options = storage_options
 
+        self.metadata = kwargs.pop("metadata", {})
+
     def _s3_path_properties(self):
         manifest_summary_json = JSONFileSource(
-            self.s3_path,
+            f"{self.s3_path}/manifest-summary.json",
             storage_options=self.storage_options,
         )
         self.export_time = manifest_summary_json.read()["exportTime"]
-        self.data_jsonlines_files = s3fs.S3FileSystem(self.storage_options).ls(
-            f"{self.s3_path}/data/"
+        manifest_files_json = JSONLinesFileSource(
+            f"{self.s3_path}/manifest-files.json",
+            storage_options=self.storage_options,
         )
 
     def _get_schema(self) -> Schema:
