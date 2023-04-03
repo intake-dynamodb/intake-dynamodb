@@ -11,13 +11,14 @@ dynamic = ["dependencies", "readme", "version"]
 [project.urls]
 repository = "https://github.com/intake-dynamodb/intake-dynamodb"
 
+[project.entry-points."intake.drivers"]
+dynamodb = "intake_dynamodb.dynamodb:DynamoDBSource"
+dynamodbjson = "intake_dynamodb.dynamodb:DynamoDBJSONSource"
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
 readme = {file = ["README.md"], content-type = "text/markdown"}
 version = {attr = "intake_dynamodb.__version__"}
-
-[project.entry-points."intake.drivers"]
-dynamodb = "intake_dynamodb:DynamoDBSource"
 
 [tool.black]
 exclude = '''
@@ -43,6 +44,11 @@ files = [
 follow_imports = "silent"
 ignore_missing_imports = true
 scripts_are_modules = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 [tool.ruff]
 select = [
