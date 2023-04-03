@@ -47,6 +47,17 @@ def example_small_table_expected_ddf() -> dd.DataFrame:
 
 
 @pytest.fixture(scope="function")
+def example_small_table_expected_ddf_no_demical() -> dd.DataFrame:
+    return db.from_sequence(
+        [
+            {"id": "0", "name": "John Doe", "age": "30"},
+            {"id": "1", "name": "Jill Doe", "age": "31"},
+        ],
+        npartitions=1,
+    ).to_dataframe()
+
+
+@pytest.fixture(scope="function")
 def example_big_table(dynamodb: botocore.client.BaseClient) -> str:
     table_name = "example-big-table"
     dynamodb.create_table(
@@ -234,8 +245,37 @@ def yaml_catalog() -> DataSource:
 #     )
 
 
-def test_test_dynamodbjson_source(example_bucket):
+def test_dynamodbjson_source(example_bucket):
     source = DynamoDBJSONSource(
-        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefg",
+        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh",
     )
     assert isinstance(source, DynamoDBJSONSource)
+
+
+def test_dynamodbjson_small_s3_export(
+    example_bucket,
+    s3,
+    example_small_table_expected_ddf_no_demical,
+):
+    for file in [
+        "manifest-summary.json",
+        "manifest-files.json",
+        "data/abcdefghijklmnopqrstuvwxyz.json.gz",
+    ]:
+        with open(
+            f"tests/AWSDynamoDB/0123456789-abcdefgh/{file}",
+            "rb",
+        ) as f:
+            s3.upload_fileobj(
+                f,
+                example_bucket,
+                f"AWSDynamoDB/0123456789-abcdefgh/{file}",
+            )
+    source = DynamoDBJSONSource(
+        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh",
+    )
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_expected_ddf_no_demical.compute(),
+    )

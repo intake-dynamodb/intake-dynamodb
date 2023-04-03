@@ -4,10 +4,10 @@ from time import sleep
 from typing import Any, Optional
 
 import boto3
+import dask
 import dask.bag as db
 import dask.dataframe as dd
 import pandas as pd
-import s3fs
 from botocore.exceptions import ClientError
 from intake.source.base import DataSource, Schema
 from intake.source.jsonfiles import JSONFileSource, JSONLinesFileSource
@@ -176,7 +176,7 @@ class DynamoDBJSONSource(DataSource):
         ----------
         s3_path: str
             s3 path of the dynamodb s3 export dump. usually contains hash
-            e.g. "s3://BUCKET/AWSDynamoDB/0123456789-abcdefg".
+            e.g. "s3://example-bucket/AWSDynamoDB/0123456789-abcdefgh".
         storage_options: dict (optional)
             options for the s3 path e.g. {"profile": "dev"}
         """
@@ -202,11 +202,24 @@ class DynamoDBJSONSource(DataSource):
             self.data_files.append(f"s3://{self.s3_bucket}/{file['dataFileS3Key']}")
         self.npartitions = len(self.data_files)
 
+    @dask.delayed
     def _parse_dynamodbjson(self, data_file: str) -> pd.DataFrame:
-        data = JSONLinesFileSource(data_file, storage_options=self.storage_options)
+        data = JSONLinesFileSource(
+            data_file,
+            storage_options=self.storage_options,
+            compression="gzip",
+        ).read()
         data = list(map(lambda x: x["Item"], data))
         df = pd.json_normalize(data)
-        df.columns = df.columns.str.replace(".S", "").str.replace(".N", "")
+        df.columns = df.columns.str.replace(
+            ".S",
+            "",
+            regex=True,
+        ).str.replace(
+            ".N",
+            "",
+            regex=True,
+        )
         return df
 
     def _get_schema(self) -> Schema:
