@@ -27,25 +27,32 @@ def example_small_table(dynamodb: botocore.client.BaseClient) -> str:
             TableName=table_name,
             Item={
                 "id": {"S": f"{i}"},
-                "name": {"S": ["John Doe", "Jill Doe"][i]},
-                "age": {"N": f"{i + 30}"},
+                "nm": {"S": ["John Doe", "Jill Doe"][i]},
+                "ag": {"N": f"{i + 30}"},
             },
         )
     return table_name
 
 
 @pytest.fixture(scope="function")
-def example_small_items() -> list[dict[str, dict[str, str]]]:
+def example_small_table_items() -> list[dict[str, dict[str, str]]]:
     return [
-        {"id": {"S": "0"}, "name": {"S": "John Doe"}, "age": {"N": "30"}},
-        {"id": {"S": "1"}, "name": {"S": "Jill Doe"}, "age": {"N": "31"}},
+        {"id": {"S": "0"}, "nm": {"S": "John Doe"}, "ag": {"N": "30"}},
+        {"id": {"S": "1"}, "nm": {"S": "Jill Doe"}, "ag": {"N": "31"}},
     ]
 
 
 @pytest.fixture(scope="function")
-def example_small_table_expected_ddf(example_small_items) -> dd.DataFrame:
+def example_small_table_items_filtered() -> list[dict[str, dict[str, str]]]:
+    return [
+        {"id": {"S": "0"}, "nm": {"S": "John Doe"}, "ag": {"N": "30"}},
+    ]
+
+
+@pytest.fixture(scope="function")
+def example_small_table_expected_ddf(example_small_table_items) -> dd.DataFrame:
     return db.from_sequence(
-        example_small_items,
+        example_small_table_items,
         npartitions=1,
     ).to_dataframe()
 
@@ -75,8 +82,8 @@ def example_big_table(dynamodb: botocore.client.BaseClient) -> str:
             TableName=table_name,
             Item={
                 "id": {"S": f"{i}"},
-                "name": {"S": "immortal person"},
-                "age": {"N": f"{i}"},
+                "nm": {"S": "immortal person"},
+                "ag": {"N": f"{i}"},
             },
         )
     return table_name
@@ -98,8 +105,8 @@ def example_small_table_different_account(
             TableName=table_name,
             Item={
                 "id": {"S": f"{i}"},
-                "name": {"S": ["John Doe", "Jill Doe"][i]},
-                "age": {"N": f"{i + 30 + 1}"},
+                "nm": {"S": ["John Doe", "Jill Doe"][i]},
+                "ag": {"N": f"{i + 30 + 1}"},
             },
         )
     return table_name
@@ -108,8 +115,8 @@ def example_small_table_different_account(
 @pytest.fixture(scope="function")
 def example_small_items_different_account() -> list[dict[str, dict[str, str]]]:
     return [
-        {"id": {"S": "0"}, "name": {"S": "John Doe"}, "age": {"N": "31"}},
-        {"id": {"S": "1"}, "name": {"S": "Jill Doe"}, "age": {"N": "32"}},
+        {"id": {"S": "0"}, "nm": {"S": "John Doe"}, "ag": {"N": "31"}},
+        {"id": {"S": "1"}, "nm": {"S": "Jill Doe"}, "ag": {"N": "32"}},
     ]
 
 
@@ -158,96 +165,105 @@ def test_dynamodb_source(example_small_table):
     assert isinstance(source, DynamoDBSource)
 
 
-def test_dynamodb_scan(example_small_table, example_small_items):
+def test_dynamodb_scan(example_small_table, example_small_table_items):
     source = DynamoDBSource(table_name=example_small_table)
     items = source._scan_table()
-    assert items == example_small_items
+    assert items == example_small_table_items
 
 
-# def test_dynamodb_scan_filtered(example_small_table):
-#     source = DynamoDBSource(
-#         table_name=example_small_table,
-#         filter_expression="age = :age_value",
-#         filter_expression_value=30,
-#     )
-#     items = source._scan_table()
-#     assert items == [
-#         {"id": "0", "name": "John Doe", "age": Decimal("30")},
-#     ]
+def test_dynamodb_scan_filtered_num(
+    example_small_table, example_small_table_items_filtered
+):
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        filter_expression="ag = :ag_value",
+        filter_expression_value=30,
+    )
+    items = source._scan_table()
+    assert items == example_small_table_items_filtered
 
 
-# def test_dynamodb_to_dask(
-#     example_small_table,
-#     example_small_table_expected_ddf,
-# ):
-#     source = DynamoDBSource(table_name=example_small_table)
-#     actual_ddf = source.to_dask()
-#     dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
+def test_yaml_small_table_filtered(
+    yaml_catalog,
+    example_small_table,
+    example_small_table_items_filtered,
+):
+    source = yaml_catalog.example_small_table_filtered
+    actual_df = source.read()
+    expected_df = pd.DataFrame(example_small_table_items_filtered)
+    pd_testing.assert_equal(
+        actual_df,
+        expected_df,
+    )
 
 
-# def test_dynamodb_read(
-#     example_small_table,
-#     example_small_table_expected_ddf,
-# ):
-#     source = DynamoDBSource(table_name=example_small_table)
-#     actual_df = source.read()
-#     pd_testing.assert_equal(
-#         actual_df,
-#         example_small_table_expected_ddf.compute(),
-#     )
+def test_dynamodb_scan_filtered_str(
+    example_small_table, example_small_table_items_filtered
+):
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        filter_expression="nm = :nm_value",
+        filter_expression_value="John Doe",
+    )
+    items = source._scan_table()
+    assert items == example_small_table_items_filtered
 
 
-# @pytest.mark.slow
-# def test_dynamodb_to_paritioned_dask(example_big_table):
-#     source = DynamoDBSource(table_name=example_big_table)
-#     ddf = source.to_dask()
-#     assert ddf.npartitions == 2
+def test_dynamodb_to_dask(
+    example_small_table,
+    example_small_table_expected_ddf,
+):
+    source = DynamoDBSource(table_name=example_small_table)
+    actual_ddf = source.to_dask()
+    dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
 
 
-# def test_dynamodb_in_different_account(
-#     example_small_table_different_account,
-#     example_small_table_different_account_expected_ddf,
-# ):
-#     source = DynamoDBSource(
-#         table_name=example_small_table_different_account,
-#         sts_role_arn="arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
-#         region_name="us-west-2",
-#     )
-#     actual_df = source.read()
-#     pd_testing.assert_equal(
-#         actual_df,
-#         example_small_table_different_account_expected_ddf.compute(),
-#     )
+def test_dynamodb_read(
+    example_small_table,
+    example_small_table_expected_ddf,
+):
+    source = DynamoDBSource(table_name=example_small_table)
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_expected_ddf.compute(),
+    )
 
 
-# def test_yaml_small_table(
-#     yaml_catalog,
-#     example_small_table,
-#     example_small_table_expected_ddf,
-# ):
-#     source = yaml_catalog.example_small_table
-#     actual_df = source.read()
-#     pd_testing.assert_equal(
-#         actual_df,
-#         example_small_table_expected_ddf.compute(),
-#     )
+@pytest.mark.slow
+def test_dynamodb_to_paritioned_dask(example_big_table):
+    source = DynamoDBSource(table_name=example_big_table)
+    ddf = source.to_dask()
+    assert ddf.npartitions == 2
 
 
-# def test_yaml_small_table_filtered(
-#     yaml_catalog,
-#     example_small_table,
-# ):
-#     source = yaml_catalog.example_small_table_filtered
-#     actual_df = source.read()
-#     expected_df = pd.DataFrame(
-#         [
-#             {"id": "0", "name": "John Doe", "age": Decimal("30")},
-#         ]
-#     )
-#     pd_testing.assert_equal(
-#         actual_df,
-#         expected_df,
-#     )
+def test_dynamodb_in_different_account(
+    example_small_table_different_account,
+    example_small_table_different_account_expected_ddf,
+):
+    source = DynamoDBSource(
+        table_name=example_small_table_different_account,
+        sts_role_arn="arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
+        region_name="us-west-2",
+    )
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_different_account_expected_ddf.compute(),
+    )
+
+
+def test_yaml_small_table(
+    yaml_catalog,
+    example_small_table,
+    example_small_table_expected_ddf,
+):
+    source = yaml_catalog.example_small_table
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_expected_ddf.compute(),
+    )
 
 
 # @pytest.mark.slow

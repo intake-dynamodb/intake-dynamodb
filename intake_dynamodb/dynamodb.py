@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from time import sleep
 from typing import Any, Optional
+import numbers
 
 import botocore.session
 import dask
@@ -48,7 +49,7 @@ class DynamoDBSource(DataSource):
         filter_expression: str (optional)
             Filter expression to pass to table.scan() e.g. 'age = :age_threshold'
         filter_expression_value: Any (optional)
-            Value used in filter_expression such as 30
+            Number or string e.g. 30
         """
         self.table_name = table_name
         self.sts_role_arn = sts_role_arn
@@ -91,7 +92,13 @@ class DynamoDBSource(DataSource):
             response = self.dynamodb.scan(TableName=self.table_name)
         else:
             _key = self.filter_expression.split(" ")[-1]  # type: ignore[union-attr]
-            _expression_attribute_values = {_key: self.filter_expression_value}
+            if isinstance(self.filter_expression_value, numbers.Number):
+                _val_dtype = "N"
+                self.filter_expression_value = str(self.filter_expression_value)
+            else:
+                _val_dtype = "S"
+            _value = {_val_dtype: self.filter_expression_value}
+            _expression_attribute_values = {_key: _value}
             response = self.dynamodb.scan(
                 TableName=self.table_name,
                 FilterExpression=self.filter_expression,
