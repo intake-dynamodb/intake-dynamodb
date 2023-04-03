@@ -3,7 +3,7 @@ from __future__ import annotations
 from time import sleep
 from typing import Any, Optional
 
-import boto3
+import botocore.session
 import dask
 import dask.bag as db
 import dask.dataframe as dd
@@ -62,15 +62,15 @@ class DynamoDBSource(DataSource):
         self,
     ):
         if self.sts_role_arn is None and self.region_name is None:
-            self.dynamodb = boto3.resource("dynamodb")
+            self.dynamodb = botocore.session.Session().create_client("dynamodb")
         else:
-            self.sts = boto3.client("sts")
+            self.sts = botocore.session.Session().create_client("sts")
             _sts_session = self.sts.assume_role(
                 RoleArn=self.sts_role_arn,
                 RoleSessionName="session",
             )
             creds = _sts_session["Credentials"]
-            self.dynamodb = boto3.resource(
+            self.dynamodb = botocore.session.Session().create_client(
                 "dynamodb",
                 aws_access_key_id=creds["AccessKeyId"],
                 aws_secret_access_key=creds["SecretAccessKey"],
@@ -84,16 +84,16 @@ class DynamoDBSource(DataSource):
         """Perform a scan operation on table and optionally filter."""
         self._connect()
         retries = 0
-        table = self.dynamodb.Table(self.table_name)  # type: ignore[union-attr]
         _no_filter = (
             self.filter_expression is None and self.filter_expression_value is None
         )
         if _no_filter:
-            response = table.scan()
+            response = self.dynamodb.scan(TableName=self.table_name)
         else:
             _key = self.filter_expression.split(" ")[-1]  # type: ignore[union-attr]
             _expression_attribute_values = {_key: self.filter_expression_value}
-            response = table.scan(
+            response = self.dynamodb.scan(
+                TableName=self.table_name,
                 FilterExpression=self.filter_expression,
                 ExpressionAttributeValues=_expression_attribute_values,
             )
@@ -103,11 +103,13 @@ class DynamoDBSource(DataSource):
         while "LastEvaluatedKey" in response:
             try:
                 if _no_filter:
-                    response = table.scan(
-                        ExclusiveStartKey=response["LastEvaluatedKey"]
+                    response = self.dynamodb.scan(
+                        TableName=self.table_name,
+                        ExclusiveStartKey=response["LastEvaluatedKey"],
                     )
                 else:
-                    response = table.scan(
+                    response = self.dynamodb.scan(
+                        TableName=self.table_name,
                         ExclusiveStartKey=response["LastEvaluatedKey"],
                         FilterExpression=self.filter_expression,
                         ExpressionAttributeValues=_expression_attribute_values,
@@ -245,4 +247,4 @@ class DynamoDBJSONSource(DataSource):
 
     def read(self) -> pd.DataFrame:
         self._get_schema()
-        return self.dataframe.compute()
+        return self.dataframe.compute().reset_index(drop=True)
