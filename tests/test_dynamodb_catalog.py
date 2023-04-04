@@ -1,8 +1,5 @@
-from decimal import Decimal
-
 import botocore
 import dask
-import dask.bag as db
 import dask.dataframe as dd
 import intake
 import pandas as pd
@@ -11,7 +8,7 @@ import pytest
 from dask.dataframe.utils import assert_eq as dask_dataframe_assert_eq
 from intake.source.base import DataSource
 
-from intake_dynamodb import DynamoDBSource, DynamoDBJSONSource
+from intake_dynamodb import DynamoDBJSONSource, DynamoDBSource
 
 
 @pytest.fixture(scope="function")
