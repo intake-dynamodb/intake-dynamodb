@@ -4,6 +4,7 @@ import numbers
 from time import sleep
 from typing import Any, Optional
 
+import awkward as ak
 import botocore.session
 import dask
 import dask.dataframe as dd
@@ -129,6 +130,7 @@ class DynamoDBSource(DataSource):
                 sleep(2**retries)
                 if retries < MAX_RETRIES:
                     retries += 1  # TODO max limit
+        self.n_items = len(items)
         return items
 
     def _get_schema(self) -> Schema:
@@ -154,13 +156,40 @@ class DynamoDBSource(DataSource):
             self._scan_table()
         return self.table_scan_calls
 
-    def to_dask(self) -> dd.DataFrame:
-        table_items = self._scan_table()
-        # could find a way to parition based on size of list
-        self.dataframe = dd.from_delayed(
-            dask.delayed(pd.json_normalize)(table_items),
-        )
+    @dask.delayed
+    def _parallel_to_dataframe(
+        self,
+        start: int,
+        end: int,
+    ) -> pd.DataFrame:
+        return ak.to_dataframe(ak.Array(self.table_items[start:end]))
+
+    def to_dask(
+        self,
+        n_records_per_partition: int = 10_000_000,
+    ) -> dd.DataFrame:
+        self.table_items = self._scan_table()
+        n_batches = (self.n_items // n_records_per_partition) + 1
+        start = 0
+        end = n_records_per_partition - 1
+        tasks = []
+        for batch in range(0, n_batches):
+            tasks.append(self._parallel_to_dataframe(start, end))
+            start = end + 1
+            if batch == n_batches:
+                end = -1
+            else:
+                end += n_records_per_partition
+        self.dataframe = dd.from_delayed(tasks)
         return self.dataframe
+        # for batch in range(0, n_batches):
+        #     df = ak.to_dataframe(ak.Array(table_items[start_batch:end_batch]))
+        #     dak_array =
+
+        # self.dataframe = dd.from_delayed(
+        #     dask.delayed(pd.json_normalize)(table_items),
+        # )
+        # return self.dataframe
 
     def read(self) -> pd.DataFrame:
         self._get_schema()

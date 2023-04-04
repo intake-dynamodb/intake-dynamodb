@@ -1,7 +1,0 @@
-black
-moto[dynamodb]
-mypy
-pre-commit
-pytest
-ruff
-yamllint

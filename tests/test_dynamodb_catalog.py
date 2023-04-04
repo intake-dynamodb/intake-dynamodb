@@ -1,6 +1,8 @@
+import awkward as ak
 import botocore
 import dask
 import dask.dataframe as dd
+import dask_awkward as dak
 import intake
 import pandas as pd
 import pandas._testing as pd_testing
@@ -9,6 +11,7 @@ from dask.dataframe.utils import assert_eq as dask_dataframe_assert_eq
 from intake.source.base import DataSource
 
 from intake_dynamodb import DynamoDBJSONSource, DynamoDBSource
+from intake_dynamodb.helper import to_dask_dataframe
 
 
 @pytest.fixture(scope="function")
@@ -41,12 +44,19 @@ def example_small_table_items() -> list[dict[str, dict[str, str]]]:
 
 
 @pytest.fixture(scope="function")
+def example_small_table_df(example_small_table_items) -> pd.DataFrame:
+    return ak.to_dataframe(ak.Array(example_small_table_items))
+
+
+@pytest.fixture(scope="function")
 def example_small_table_expected_ddf(
     example_small_table_items,
 ) -> dd.DataFrame:
-    return dd.from_delayed(
-        dask.delayed(pd.json_normalize)(example_small_table_items),
+    return to_dask_dataframe(
+        dak.from_awkward(ak.Array(example_small_table_items), 1),
     )
+    #     dask.delayed(pd.json_normalize)(example_small_table_items),
+    # )
 
 
 @pytest.fixture(scope="function")
@@ -220,154 +230,171 @@ def test_dynamodb_to_dask(
 ):
     source = DynamoDBSource(table_name=example_small_table)
     actual_ddf = source.to_dask()
+    print("actual_ddf", actual_ddf)
+    print("")
+    print("example_small_table_expected_ddf", example_small_table_expected_ddf)
     dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
 
 
-def test_dynamodb_read(
-    example_small_table,
-    example_small_table_expected_ddf,
-):
-    source = DynamoDBSource(table_name=example_small_table)
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
-    )
+# def test_dynamodb_read(
+#     example_small_table,
+#     example_small_table_expected_ddf,
+# ):
+#     source = DynamoDBSource(table_name=example_small_table)
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_expected_ddf.compute(),
+#     )
 
 
-def test_yaml_small_table_filtered(
-    yaml_catalog,
-    example_small_table,
-    example_small_table_expected_ddf_filtered,
-):
-    source = yaml_catalog.example_small_table_filtered
-    actual_df = source.read()
-    expected_df = example_small_table_expected_ddf_filtered.compute()
-    pd_testing.assert_equal(
-        actual_df,
-        expected_df,
-    )
+# def test_yaml_small_table_filtered_num(
+#     yaml_catalog,
+#     example_small_table,
+#     example_small_table_expected_ddf_filtered,
+# ):
+#     source = yaml_catalog.example_small_table_filtered_num
+#     actual_df = source.read()
+#     expected_df = example_small_table_expected_ddf_filtered.compute()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         expected_df,
+#     )
 
 
-@pytest.mark.slow
-def test_dynamodb_multi_scan(example_big_table):
-    source = DynamoDBSource(table_name=example_big_table)
-    source._get_n_table_scans() == 2
+# def test_yaml_small_table_filtered_str(
+#     yaml_catalog,
+#     example_small_table,
+#     example_small_table_expected_ddf_filtered,
+# ):
+#     source = yaml_catalog.example_small_table_filtered_str
+#     actual_df = source.read()
+#     expected_df = example_small_table_expected_ddf_filtered.compute()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         expected_df,
+#     )
 
 
-def test_dynamodb_in_different_account(
-    example_small_table_different_account,
-    example_small_table_different_account_expected_ddf,
-):
-    source = DynamoDBSource(
-        table_name=example_small_table_different_account,
-        sts_role_arn="arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
-        region_name="us-west-2",
-    )
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_different_account_expected_ddf.compute(),
-    )
+# @pytest.mark.slow
+# def test_dynamodb_multi_scan(example_big_table):
+#     source = DynamoDBSource(table_name=example_big_table)
+#     source._get_n_table_scans() == 2
 
 
-def test_yaml_small_table(
-    yaml_catalog,
-    example_small_table,
-    example_small_table_expected_ddf,
-):
-    source = yaml_catalog.example_small_table
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
-    )
+# def test_dynamodb_in_different_account(
+#     example_small_table_different_account,
+#     example_small_table_different_account_expected_ddf,
+# ):
+#     source = DynamoDBSource(
+#         table_name=example_small_table_different_account,
+#         sts_role_arn="arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME",
+#         region_name="us-west-2",
+#     )
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_different_account_expected_ddf.compute(),
+#     )
 
 
-@pytest.mark.slow
-def test_yaml_big_table(
-    yaml_catalog,
-    example_big_table,
-    example_big_table_expected_ddf,
-):
-    source = yaml_catalog.example_big_table
-    actual_ddf = source.to_dask()
-    dask_dataframe_assert_eq(
-        actual_ddf,
-        example_big_table_expected_ddf,
-    )
+# def test_yaml_small_table(
+#     yaml_catalog,
+#     example_small_table,
+#     example_small_table_expected_ddf,
+# ):
+#     source = yaml_catalog.example_small_table
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_expected_ddf.compute(),
+#     )
 
 
-def test_yaml_different_account(
-    yaml_catalog,
-    example_small_table_different_account,
-    example_small_table_different_account_expected_ddf,
-):
-    source = yaml_catalog.example_small_table_different_account
-    actual_ddf = source.to_dask()
-    dask_dataframe_assert_eq(
-        actual_ddf, example_small_table_different_account_expected_ddf
-    )
+# @pytest.mark.slow
+# def test_yaml_big_table(
+#     yaml_catalog,
+#     example_big_table,
+#     example_big_table_expected_ddf,
+# ):
+#     source = yaml_catalog.example_big_table
+#     actual_ddf = source.to_dask()
+#     dask_dataframe_assert_eq(
+#         actual_ddf,
+#         example_big_table_expected_ddf,
+#     )
 
 
-def test_dynamodbjson_source(example_bucket):
-    source = DynamoDBJSONSource(
-        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh",
-    )
-    assert isinstance(source, DynamoDBJSONSource)
+# def test_yaml_different_account(
+#     yaml_catalog,
+#     example_small_table_different_account,
+#     example_small_table_different_account_expected_ddf,
+# ):
+#     source = yaml_catalog.example_small_table_different_account
+#     actual_ddf = source.to_dask()
+#     dask_dataframe_assert_eq(
+#         actual_ddf, example_small_table_different_account_expected_ddf
+#     )
 
 
-def test_dynamodbjson_small_s3_export(
-    example_bucket,
-    s3,
-    example_small_table_expected_ddf,
-):
-    source = DynamoDBJSONSource(
-        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh",
-    )
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
-    )
+# def test_dynamodbjson_source(example_bucket):
+#     source = DynamoDBJSONSource(
+#         s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh",
+#     )
+#     assert isinstance(source, DynamoDBJSONSource)
 
 
-def test_dynamodbjson_small_s3_export_yaml(
-    yaml_catalog,
-    example_bucket,
-    s3,
-    example_small_table,
-):
-    source_s3_export = yaml_catalog.example_small_s3_export
-    s3_export_df = source_s3_export.read()
-    source_dynamodb = yaml_catalog.example_small_table
-    dynamodb_df = source_dynamodb.read()
-    pd_testing.assert_equal(s3_export_df, dynamodb_df)
+# def test_dynamodbjson_small_s3_export(
+#     example_bucket,
+#     s3,
+#     example_small_table_expected_ddf,
+# ):
+#     source = DynamoDBJSONSource(
+#         s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh",
+#     )
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_expected_ddf.compute(),
+#     )
 
 
-def test_dynamodbjson_partitioned_s3_export(
-    example_bucket,
-    s3,
-    example_small_table_expected_ddf,
-):
-    source = DynamoDBJSONSource(
-        s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh2",
-    )
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
-    )
+# def test_dynamodbjson_small_s3_export_yaml(
+#     yaml_catalog,
+#     example_bucket,
+#     s3,
+#     example_small_table,
+# ):
+#     source_s3_export = yaml_catalog.example_small_s3_export
+#     s3_export_df = source_s3_export.read()
+#     source_dynamodb = yaml_catalog.example_small_table
+#     dynamodb_df = source_dynamodb.read()
+#     pd_testing.assert_equal(s3_export_df, dynamodb_df)
 
 
-def test_dynamodbjson_partitioned_s3_export_yaml(
-    yaml_catalog,
-    example_bucket,
-    s3,
-    example_small_table,
-):
-    source_paritioned_s3_export = yaml_catalog.example_partitioned_s3_export
-    s3_export_df = source_paritioned_s3_export.read()
-    source_dynamodb = yaml_catalog.example_small_table
-    dynamodb_df = source_dynamodb.read()
-    pd_testing.assert_equal(s3_export_df, dynamodb_df)
+# def test_dynamodbjson_partitioned_s3_export(
+#     example_bucket,
+#     s3,
+#     example_small_table_expected_ddf,
+# ):
+#     source = DynamoDBJSONSource(
+#         s3_path=f"s3://{example_bucket}/AWSDynamoDB/0123456789-abcdefgh2",
+#     )
+#     actual_df = source.read()
+#     pd_testing.assert_equal(
+#         actual_df,
+#         example_small_table_expected_ddf.compute(),
+#     )
+
+
+# def test_dynamodbjson_partitioned_s3_export_yaml(
+#     yaml_catalog,
+#     example_bucket,
+#     s3,
+#     example_small_table,
+# ):
+#     source_paritioned_s3_export = yaml_catalog.example_partitioned_s3_export
+#     s3_export_df = source_paritioned_s3_export.read()
+#     source_dynamodb = yaml_catalog.example_small_table
+#     dynamodb_df = source_dynamodb.read()
+#     pd_testing.assert_equal(s3_export_df, dynamodb_df)

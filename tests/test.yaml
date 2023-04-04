@@ -8,13 +8,20 @@ sources:
     driver: dynamodb
     args:
       table_name: 'example-small-table'
-  example_small_table_filtered:
-    description: example small dynamodb table
+  example_small_table_filtered_num:
+    description: example small dynamodb table with a numeric filter
     driver: dynamodb
     args:
       table_name: 'example-small-table'
       filter_expression: 'ag = :ag_value'
       filter_expression_value: 30
+  example_small_table_filtered_str:
+    description: example small dynamodb table with a str filter
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+      filter_expression: 'nm = :nm_value'
+      filter_expression_value: 'John Doe'
   example_big_table:
     description: example big dynamodb table
     driver: dynamodb
