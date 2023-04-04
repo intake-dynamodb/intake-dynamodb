@@ -13,7 +13,7 @@ sources:
     driver: dynamodb
     args:
       table_name: 'example-small-table'
-      filter_expression: 'age = :age_value'
+      filter_expression: 'ag = :ag_value'
       filter_expression_value: 30
   example_big_table:
     description: example big dynamodb table

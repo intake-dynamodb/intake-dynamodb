@@ -81,7 +81,7 @@ class DynamoDBSource(DataSource):
 
     def _scan_table(
         self,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, str]]:
         """Perform a scan operation on table and optionally filter."""
         self._connect()
         retries = 0
@@ -105,7 +105,7 @@ class DynamoDBSource(DataSource):
                 ExpressionAttributeValues=_expression_attribute_values,
             )
         items = response["Items"]
-        self.npartitions = 1
+        self.table_scan_calls = 1
 
         while "LastEvaluatedKey" in response:
             try:
@@ -122,7 +122,7 @@ class DynamoDBSource(DataSource):
                         ExpressionAttributeValues=_expression_attribute_values,
                     )
                 items.extend(response["Items"])
-                self.npartitions += 1
+                self.table_scan_calls += 1
                 retries = 0  # if successful, reset count
             except ClientError as err:
                 if err.response["Error"]["Code"] not in RETRY_EXCEPTIONS:
@@ -150,12 +150,17 @@ class DynamoDBSource(DataSource):
         self._get_schema()
         return self.dataframe.get_partition(i).compute()
 
+    def _get_n_table_scans(self) -> int:
+        if not hasattr(self, "table_scan_calls"):
+            self._scan_table()
+        return self.table_scan_calls
+
     def to_dask(self) -> dd.DataFrame:
         table_items = self._scan_table()
-        self.dataframe = db.from_sequence(
-            table_items,
-            npartitions=self.npartitions,
-        ).to_dataframe()
+        # could find a way to parition based on size of list
+        self.dataframe = dd.from_delayed(
+            dask.delayed(pd.json_normalize)(table_items),
+        )
         return self.dataframe
 
     def read(self) -> pd.DataFrame:
@@ -220,15 +225,6 @@ class DynamoDBJSONSource(DataSource):
         ).read()
         data = list(map(lambda x: x["Item"], data))
         df = pd.json_normalize(data)
-        df.columns = df.columns.str.replace(
-            ".S",
-            "",
-            regex=True,
-        ).str.replace(
-            ".N",
-            "",
-            regex=True,
-        )
         return df
 
     def _get_schema(self) -> Schema:
