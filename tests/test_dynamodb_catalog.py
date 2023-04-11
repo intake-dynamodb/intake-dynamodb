@@ -1,8 +1,6 @@
-import awkward as ak
 import botocore
 import dask
 import dask.dataframe as dd
-import dask_awkward as dak
 import intake
 import pandas as pd
 import pandas._testing as pd_testing
@@ -11,7 +9,6 @@ from dask.dataframe.utils import assert_eq as dask_dataframe_assert_eq
 from intake.source.base import DataSource
 
 from intake_dynamodb import DynamoDBJSONSource, DynamoDBSource
-from intake_dynamodb.helper import to_dask_dataframe
 
 
 @pytest.fixture(scope="function")
@@ -37,42 +34,45 @@ def example_small_table(dynamodb: botocore.client.BaseClient) -> str:
 
 @pytest.fixture(scope="function")
 def example_small_table_items() -> list[dict[str, dict[str, str]]]:
-    return [
+    _l = [
         {"id": {"S": "0"}, "nm": {"S": "John Doe"}, "ag": {"N": "30"}},
         {"id": {"S": "1"}, "nm": {"S": "Jill Doe"}, "ag": {"N": "31"}},
     ]
-
-
-@pytest.fixture(scope="function")
-def example_small_table_df(example_small_table_items) -> pd.DataFrame:
-    return ak.to_dataframe(ak.Array(example_small_table_items))
-
-
-@pytest.fixture(scope="function")
-def example_small_table_expected_ddf(
-    example_small_table_items,
-) -> dd.DataFrame:
-    return to_dask_dataframe(
-        dak.from_awkward(ak.Array(example_small_table_items), 1),
-    )
-    #     dask.delayed(pd.json_normalize)(example_small_table_items),
-    # )
+    return _l
 
 
 @pytest.fixture(scope="function")
 def example_small_table_items_filtered() -> list[dict[str, dict[str, str]]]:
-    return [
+    _l = [
         {"id": {"S": "0"}, "nm": {"S": "John Doe"}, "ag": {"N": "30"}},
     ]
+    return _l
+
+
+@pytest.fixture(scope="function")
+def example_small_table_df(example_small_table_items) -> pd.DataFrame:
+    return pd.json_normalize(example_small_table_items)
+
+
+@pytest.fixture(scope="function")
+def example_small_table_items_filtered_df(
+    example_small_table_items_filtered,
+) -> pd.DataFrame:
+    return pd.json_normalize(example_small_table_items_filtered)
+
+
+@pytest.fixture(scope="function")
+def example_small_table_expected_ddf(
+    example_small_table_df,
+) -> dd.DataFrame:
+    return dd.from_pandas(example_small_table_df, 1)
 
 
 @pytest.fixture(scope="function")
 def example_small_table_expected_ddf_filtered(
-    example_small_table_items_filtered,
+    example_small_table_items_filtered_df,
 ) -> dd.DataFrame:
-    return dd.from_delayed(
-        dask.delayed(pd.json_normalize)(example_small_table_items_filtered),
-    )
+    return dd.from_pandas(example_small_table_items_filtered_df, 1)
 
 
 @pytest.fixture(scope="function")
@@ -111,12 +111,15 @@ def example_big_table_items() -> list[dict[str, dict[str, str]]]:
 
 
 @pytest.fixture(scope="function")
+def example_big_table_df(example_big_table_items) -> pd.DataFrame:
+    return pd.json_normalize(example_big_table_items)
+
+
+@pytest.fixture(scope="function")
 def example_big_table_expected_ddf(
-    example_big_table_items,
+    example_big_table_df,
 ) -> dd.DataFrame:
-    return dd.from_delayed(
-        dask.delayed(pd.json_normalize)(example_big_table_items),
-    )
+    return dd.from_pandas(example_big_table_df, 1)
 
 
 @pytest.fixture(scope="function")
@@ -144,18 +147,20 @@ def example_small_table_different_account(
 
 @pytest.fixture(scope="function")
 def example_small_items_different_account() -> list[dict[str, dict[str, str]]]:
-    return [
+    _l = [
         {"id": {"S": "0"}, "nm": {"S": "John Doe"}, "ag": {"N": "31"}},
         {"id": {"S": "1"}, "nm": {"S": "Jill Doe"}, "ag": {"N": "32"}},
     ]
+    return _l
 
 
 @pytest.fixture(scope="function")
 def example_small_table_different_account_expected_ddf(
     example_small_items_different_account,
 ) -> dd.DataFrame:
-    return dd.from_delayed(
-        dask.delayed(pd.json_normalize)(example_small_items_different_account),
+    return dd.from_pandas(
+        pd.json_normalize(example_small_items_different_account),
+        1,
     )
 
 
@@ -230,9 +235,6 @@ def test_dynamodb_to_dask(
 ):
     source = DynamoDBSource(table_name=example_small_table)
     actual_ddf = source.to_dask()
-    print("actual_ddf", actual_ddf)
-    print("")
-    print("example_small_table_expected_ddf", example_small_table_expected_ddf)
     dask_dataframe_assert_eq(actual_ddf, example_small_table_expected_ddf)
 
 

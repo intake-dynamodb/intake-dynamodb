@@ -8,7 +8,6 @@ description = "Intake plugin for reading data from dynamodb"
 authors = [{name = "Ray Bell", email = "rayjohnbell0@gmail.com"}]
 dependencies = [
     "dask[dataframe]",
-    "dask-awkward",
     "intake",
     "s3fs",
 ]
@@ -19,9 +18,9 @@ dynamodb = "intake_dynamodb.dynamodb:DynamoDBSource"
 dynamodbjson = "intake_dynamodb.dynamodb:DynamoDBJSONSource"
 
 [project.optional-dependencies]
-complete = [
+dev = [
     "black",
-    "moto[dynamodbls,s3]",
+    "moto[dynamodb,s3]",
     "mypy",
     "pre-commit",
     "pytest",
@@ -31,7 +30,6 @@ complete = [
 
 [project.urls]
 repository = "https://github.com/intake-dynamodb/intake-dynamodb"
-
 
 [tool.setuptools.dynamic]
 readme = {file = ["README.md"], content-type = "text/markdown"}
