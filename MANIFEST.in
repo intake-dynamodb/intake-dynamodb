@@ -1,5 +1,2 @@
-recursive-include . *.html
-recursive-include . *.csv
-recursive-include . *.yml
-include versioneer.py
-include intake_dynamodb/_version.py
+include requirements.txt
+include LICENSE.md

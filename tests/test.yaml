@@ -1,0 +1,46 @@
+---
+metadata:
+  version: 1
+
+sources:
+  example_small_table:
+    description: example small dynamodb table
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+  example_small_table_filtered_num:
+    description: example small dynamodb table with a numeric filter
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+      filter_expression: 'ag = :ag_value'
+      filter_expression_value: 30
+  example_small_table_filtered_str:
+    description: example small dynamodb table with a str filter
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+      filter_expression: 'nm = :nm_value'
+      filter_expression_value: 'John Doe'
+  example_big_table:
+    description: example big dynamodb table
+    driver: dynamodb
+    args:
+      table_name: 'example-big-table'
+  example_small_table_different_account:
+    description: example small dynamodb table in a different AWS account
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table-different-account'
+      sts_role_arn: 'arn:aws:iam::ACCOUNT_ID:role/ROLE_NAME'
+      region_name: 'us-west-2'
+  example_small_s3_export:
+    description: example small dynamodb table exported to s3
+    driver: dynamodbjson
+    args:
+      s3_path: 's3://example-bucket/AWSDynamoDB/0123456789-abcdefgh'
+  example_partitioned_s3_export:
+    description: example big dynamodb table exported to s3
+    driver: dynamodbjson
+    args:
+      s3_path: 's3://example-bucket/AWSDynamoDB/0123456789-abcdefgh2'

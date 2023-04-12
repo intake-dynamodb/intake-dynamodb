@@ -1,7 +1,4 @@
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
+from .dynamodb import DynamoDBSource, DynamoDBJSONSource  # noqa
 
-from .dynamodb import DynamoDBSource
 
-import intake.container
+__version__ = "2023.4.0"

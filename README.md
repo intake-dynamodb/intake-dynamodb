@@ -1,22 +1,10 @@
-# intake-dynamodb
+# Intake Dynamodb
 
-[![Build Status](https://travis-ci.com/informatics-lab/intake-dynamodb.svg?branch=master)](https://travis-ci.com/informatics-lab/intake-dynamodb)
+[![Available on pypi](https://img.shields.io/pypi/v/intake-dynamodb.svg)](https://pypi.python.org/pypi/intake-dynamodb/)
 
-Intake-dynamodb: dynamodb Plugin for [Intake](https://github.com/informatics-lab/intake-dynamodb)
-
-See [Intake docs](https://intake.readthedocs.io/en/latest/overview.html).
-
-In `intake_dynamodb`, there are plugins provided for reading data from dynamodb with.
-  - dynamodb
-
-### Installation
-
-The conda install instructions are:
-
-```
-conda install -c informaticslab -c intake intake_dynamodb
-```
-
+intake-dynamodb is a [plugin](https://intake.readthedocs.io/en/latest/plugin-directory.html) for Intake
+for reading data from dynamodb
 
 ### Acknowledgements
+
 Developed in the [Met Office Informatics Lab](https://www.metoffice.gov.uk/research/foundation/informatics-lab/index).

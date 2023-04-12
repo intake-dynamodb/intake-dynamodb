@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "intake-dynamodb"
+description = "Intake plugin for reading data from dynamodb"
+authors = [{name = "Ray Bell", email = "rayjohnbell0@gmail.com"}]
+dependencies = [
+    "dask[dataframe]",
+    "intake",
+    "s3fs",
+]
+dynamic = ["readme", "version"]
+
+[project.entry-points."intake.drivers"]
+dynamodb = "intake_dynamodb.dynamodb:DynamoDBSource"
+dynamodbjson = "intake_dynamodb.dynamodb:DynamoDBJSONSource"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "moto[dynamodb,s3]",
+    "mypy",
+    "pre-commit",
+    "pytest",
+    "ruff",
+    "yamllint",
+]
+
+[project.urls]
+repository = "https://github.com/intake-dynamodb/intake-dynamodb"
+
+[tool.setuptools.dynamic]
+readme = {file = ["README.md"], content-type = "text/markdown"}
+version = {attr = "intake_dynamodb.__version__"}
+
+[tool.black]
+exclude = '''
+(
+  /(
+      \.vscode
+    | \.git
+    | \.pytest_cache
+    | \.mypy_cache
+    | \.venv
+    | \.env
+    | \.direnv
+  )/
+)
+'''
+include = '\.pyi?$'
+line-length = 88
+
+[tool.mypy]
+files = [
+  "intake_dynamodb/*.py",
+]
+follow_imports = "silent"
+ignore_missing_imports = true
+scripts_are_modules = true
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
+
+[tool.ruff]
+select = [
+    # Pyflakes
+    "E",
+    # pycodestyle
+    "F",
+    # isort
+    "I001",
+]

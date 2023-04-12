@@ -1,0 +1,17 @@
+{
+    "version": "2020-06-30",
+    "exportArn": "arn:aws:dynamodb:us-west-1:ACCOUNT_ID:table/example-big-table/export/0123456789-abcdefgh2",
+    "startTime": "2023-01-01T00:00:00.000Z",
+    "endTime": "2023-01-01T00:05:00.000Z",
+    "tableArn": "arn:aws:dynamodb:us-west-1:ACCOUNT_ID:table/example-big-table",
+    "tableId": "blahblahblah",
+    "exportTime": "2023-01-01T00:00:00.000Z",
+    "s3Bucket": "example-bucket",
+    "s3Prefix": null,
+    "s3SseAlgorithm": "AES256",
+    "s3SseKmsKeyId": null,
+    "manifestFilesS3Key": "AWSDynamoDB/0123456789-abcdefgh/manifest-files.json",
+    "billedSizeBytes": 0,
+    "itemCount": 2,
+    "outputFormat": "DYNAMODB_JSON"
+}
