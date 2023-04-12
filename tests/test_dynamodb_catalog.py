@@ -294,7 +294,10 @@ def test_yaml_small_table_filtered_str(
 
 @pytest.mark.slow
 def test_dynamodb_multi_scan(example_big_table):
-    source = DynamoDBSource(table_name=example_big_table)
+    source = DynamoDBSource(
+        table_name=example_big_table,
+        region_name="us-east-1",
+    )
     source._get_n_table_scans() == 2
 
 
