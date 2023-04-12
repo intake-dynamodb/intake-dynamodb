@@ -203,7 +203,10 @@ def test_dynamodb_source(example_small_table):
 
 
 def test_dynamodb_scan(example_small_table, example_small_table_items):
-    source = DynamoDBSource(table_name=example_small_table)
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
     items = source._scan_table()
     assert items == example_small_table_items
 
@@ -213,6 +216,7 @@ def test_dynamodb_scan_filtered_num(
 ):
     source = DynamoDBSource(
         table_name=example_small_table,
+        region_name="us-east-1",
         filter_expression="ag = :ag_value",
         filter_expression_value=30,
     )
