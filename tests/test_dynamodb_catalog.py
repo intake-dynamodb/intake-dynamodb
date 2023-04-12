@@ -363,6 +363,7 @@ def test_dynamodbjson_source(example_bucket):
     assert isinstance(source, DynamoDBJSONSource)
 
 
+@pytest.mark.s3test
 def test_dynamodbjson_small_s3_export(
     example_bucket,
     s3,
@@ -378,6 +379,7 @@ def test_dynamodbjson_small_s3_export(
     )
 
 
+@pytest.mark.s3test
 def test_dynamodbjson_small_s3_export_yaml(
     yaml_catalog,
     example_bucket,
@@ -391,6 +393,7 @@ def test_dynamodbjson_small_s3_export_yaml(
     pd_testing.assert_equal(s3_export_df, dynamodb_df)
 
 
+@pytest.mark.s3test
 def test_dynamodbjson_partitioned_s3_export(
     example_bucket,
     s3,
@@ -406,6 +409,7 @@ def test_dynamodbjson_partitioned_s3_export(
     )
 
 
+@pytest.mark.s3test
 def test_dynamodbjson_partitioned_s3_export_yaml(
     yaml_catalog,
     example_bucket,

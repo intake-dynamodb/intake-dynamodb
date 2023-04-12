@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import numbers
 from time import sleep
 from typing import Any, Optional
@@ -8,9 +9,9 @@ import botocore.session
 import dask
 import dask.dataframe as dd
 import pandas as pd
+import s3fs
 from botocore.exceptions import ClientError
 from intake.source.base import DataSource, Schema
-from intake.source.jsonfiles import JSONFileSource, JSONLinesFileSource
 
 RETRY_EXCEPTIONS = (
     "ProvisionedThroughputExceededException",
@@ -162,7 +163,6 @@ class DynamoDBSource(DataSource):
     ) -> dd.DataFrame:
         # No easy way to do this as have to scan the table first
         # If parallel is desired see DynamoDBJSONSource
-        self.table_items = self._scan_table()
         self.read()
         self.dataframe: dd.DataFrame = dd.from_pandas(self.pd_dataframe, partitions)
         return self.dataframe
@@ -185,6 +185,7 @@ class DynamoDBJSONSource(DataSource):
         self,
         s3_path: str,
         storage_options: Optional[dict] = {},
+        config_kwargs: Optional[dict] = {},
         **kwargs,
     ):
         """
@@ -195,36 +196,50 @@ class DynamoDBJSONSource(DataSource):
             e.g. "s3://example-bucket/AWSDynamoDB/0123456789-abcdefgh".
         storage_options: dict (optional)
             options for the s3 path e.g. {"profile": "dev"}
+        config_kwargs: dict (optional)
+            See config_kwargs in s3fs
         """
         self.s3_path = s3_path
         self.storage_options = storage_options
+        self.config_kwargs = config_kwargs
 
         self.metadata = kwargs.pop("metadata", {})
 
     def _s3_path_properties(self):
         self.s3_bucket = self.s3_path.split("//")[-1].split("/")[0]
-        manifest_summary_json = JSONFileSource(
+        fs = s3fs.S3FileSystem(
+            config_kwargs=self.config_kwargs,
+        )
+        with fs.open(
             f"{self.s3_path}/manifest-summary.json",
+            mode="r",
             storage_options=self.storage_options,
-        )
-        self.export_time = manifest_summary_json.read()["exportTime"]
-        manifest_files_jsonl = JSONLinesFileSource(
+        ) as f:
+            manifest_summary_json = json.load(f)
+        self.export_time = manifest_summary_json["exportTime"]
+        with fs.open(
             f"{self.s3_path}/manifest-files.json",
+            mode="r",
             storage_options=self.storage_options,
-        )
-        manifest_files_jsonl_data = manifest_files_jsonl.read()
+        ) as f:
+            manifest_files_jsonl = list(map(json.loads, f))
         self.data_files = []
-        for file in manifest_files_jsonl_data:
+        for file in manifest_files_jsonl:
             self.data_files.append(f"s3://{self.s3_bucket}/{file['dataFileS3Key']}")
         self.npartitions = len(self.data_files)
 
     @dask.delayed
     def _parse_dynamodbjson(self, data_file: str) -> pd.DataFrame:
-        data = JSONLinesFileSource(
+        fs = s3fs.S3FileSystem(
+            config_kwargs=self.config_kwargs,
+        )
+        with fs.open(
             data_file,
-            storage_options=self.storage_options,
+            mode="r",
             compression="gzip",
-        ).read()
+            storage_options=self.storage_options,
+        ) as f:
+            data = list(map(json.loads, f))
         data = list(map(lambda x: x["Item"], data))
         df = pd.json_normalize(data)
         return df
