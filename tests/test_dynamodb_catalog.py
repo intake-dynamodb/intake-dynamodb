@@ -229,6 +229,7 @@ def test_dynamodb_scan_filtered_str(
 ):
     source = DynamoDBSource(
         table_name=example_small_table,
+        region_name="us-east-1",
         filter_expression="nm = :nm_value",
         filter_expression_value="John Doe",
     )
@@ -240,7 +241,10 @@ def test_dynamodb_to_dask(
     example_small_table,
     example_small_table_expected_ddf,
 ):
-    source = DynamoDBSource(table_name=example_small_table)
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
     actual_dask = source.to_dask()
     dask_dataframe_assert_eq(actual_dask, example_small_table_expected_ddf)
 
@@ -249,7 +253,10 @@ def test_dynamodb_read(
     example_small_table,
     example_small_table_expected_ddf,
 ):
-    source = DynamoDBSource(table_name=example_small_table)
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
     actual_df = source.read()
     pd_testing.assert_equal(
         actual_df,
