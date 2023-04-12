@@ -18,7 +18,10 @@ from moto import mock_dynamodb, mock_s3, mock_sts
 @pytest.fixture(scope="function")
 def dynamodb() -> botocore.client.BaseClient:
     with mock_dynamodb():
-        yield botocore.session.Session().create_client("dynamodb")
+        yield botocore.session.Session().create_client(
+            "dynamodb",
+            region_name="us-east-1",
+        )
 
 
 @pytest.fixture(scope="function")
