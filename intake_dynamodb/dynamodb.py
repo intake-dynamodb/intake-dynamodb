@@ -63,7 +63,12 @@ class DynamoDBSource(DataSource):
     ):
         if self.sts_role_arn is None and self.region_name is None:
             self.dynamodb = botocore.session.Session().create_client("dynamodb")
-        else:
+        if self.sts_role_arn is None and self.region_name is not None:
+            self.dynamodb = botocore.session.Session().create_client(
+                "dynamodb",
+                region_name=self.region_name,
+            )
+        if self.sts_role_arn is not None and self.region_name is not None:
             self.sts = botocore.session.Session().create_client("sts")
             _sts_session = self.sts.assume_role(
                 RoleArn=self.sts_role_arn,

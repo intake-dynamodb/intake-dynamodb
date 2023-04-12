@@ -203,7 +203,10 @@ def test_dynamodb_source(example_small_table):
 
 
 def test_dynamodb_scan(example_small_table, example_small_table_items):
-    source = DynamoDBSource(table_name=example_small_table)
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
     items = source._scan_table()
     assert items == example_small_table_items
 
@@ -213,6 +216,7 @@ def test_dynamodb_scan_filtered_num(
 ):
     source = DynamoDBSource(
         table_name=example_small_table,
+        region_name="us-east-1",
         filter_expression="ag = :ag_value",
         filter_expression_value=30,
     )
@@ -225,6 +229,7 @@ def test_dynamodb_scan_filtered_str(
 ):
     source = DynamoDBSource(
         table_name=example_small_table,
+        region_name="us-east-1",
         filter_expression="nm = :nm_value",
         filter_expression_value="John Doe",
     )
@@ -236,7 +241,10 @@ def test_dynamodb_to_dask(
     example_small_table,
     example_small_table_expected_ddf,
 ):
-    source = DynamoDBSource(table_name=example_small_table)
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
     actual_dask = source.to_dask()
     dask_dataframe_assert_eq(actual_dask, example_small_table_expected_ddf)
 
@@ -245,7 +253,10 @@ def test_dynamodb_read(
     example_small_table,
     example_small_table_expected_ddf,
 ):
-    source = DynamoDBSource(table_name=example_small_table)
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
     actual_df = source.read()
     pd_testing.assert_equal(
         actual_df,
@@ -283,7 +294,10 @@ def test_yaml_small_table_filtered_str(
 
 @pytest.mark.slow
 def test_dynamodb_multi_scan(example_big_table):
-    source = DynamoDBSource(table_name=example_big_table)
+    source = DynamoDBSource(
+        table_name=example_big_table,
+        region_name="us-east-1",
+    )
     source._get_n_table_scans() == 2
 
 
