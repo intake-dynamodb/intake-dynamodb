@@ -146,10 +146,6 @@ class DynamoDBSource(DataSource):
             extra_metadata={},
         )
 
-    def _get_partition(self, i: int) -> pd.DataFrame:
-        self._get_schema()
-        return self.dataframe.get_partition(i).compute()
-
     def _get_n_table_scans(self) -> int:
         if not hasattr(self, "table_scan_calls"):
             self._scan_table()
@@ -157,19 +153,19 @@ class DynamoDBSource(DataSource):
 
     def to_dask(
         self,
+        partitions: int = 1,
     ) -> dd.DataFrame:
-        # Could batch the list into dataframes but for now
-        # do easy route of delayed on read()
-        self.dataframe = dd.from_delayed(dask.delayed(self.read()))
+        # No easy way to do this as have to scan the table first
+        # If parallel is desired see DynamoDBJSONSource
+        self.table_items = self._scan_table()
+        self.read()
+        self.dataframe: dd.DataFrame = dd.from_pandas(self.pd_dataframe, partitions)
         return self.dataframe
 
     def read(self) -> pd.DataFrame:
         self.table_items = self._scan_table()
         self.pd_dataframe = pd.json_normalize(self.table_items)
         return self.pd_dataframe
-
-    def _close(self) -> None:
-        self.dataframe = None
 
 
 class DynamoDBJSONSource(DataSource):
