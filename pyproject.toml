@@ -63,6 +63,7 @@ scripts_are_modules = true
 [tool.pytest.ini_options]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "s3test: marks tests that use s3 (deselect with '-m \"not s3\"')",
 ]
 
 [tool.ruff]

@@ -9,6 +9,13 @@ sources:
     args:
       table_name: 'example-small-table'
       region_name: 'us-east-1'
+  example_small_table_limit:
+    description: example small dynamodb table with limit
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+      region_name: 'us-east-1'
+      limit: 1
   example_small_table_filtered_num:
     description: example small dynamodb table with a numeric filter
     driver: dynamodb
@@ -43,6 +50,15 @@ sources:
     driver: dynamodbjson
     args:
       s3_path: 's3://example-bucket/AWSDynamoDB/0123456789-abcdefgh'
+  example_small_s3_export_with_kwargs:
+    description: example small dynamodb table exported to s3
+    driver: dynamodbjson
+    args:
+      s3_path: 's3://example-bucket/AWSDynamoDB/0123456789-abcdefgh'
+      storage_options:
+        profile: 'dev'
+      config_kwargs:
+        read_timeout: 3600  # Default is 15
   example_partitioned_s3_export:
     description: example big dynamodb table exported to s3
     driver: dynamodbjson
