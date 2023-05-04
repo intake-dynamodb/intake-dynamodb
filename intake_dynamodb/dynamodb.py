@@ -32,6 +32,7 @@ class DynamoDBSource(DataSource):
         table_name: str,
         sts_role_arn: Optional[str] = None,
         region_name: Optional[str] = None,
+        limit: Optional[int] = None,
         filter_expression: Optional[str] = None,
         filter_expression_value: Optional[Any] = None,
         **kwargs,
@@ -46,6 +47,8 @@ class DynamoDBSource(DataSource):
         region_name: str (optional)
             The region of the DynamoDB table if reading a DynamoDB table in another
             AWS account.
+        limit: int (optional)
+            Limit the return items.
         filter_expression: str (optional)
             Filter expression to pass to table.scan() e.g. 'age = :age_threshold'
         filter_expression_value: Any (optional)
@@ -54,6 +57,7 @@ class DynamoDBSource(DataSource):
         self.table_name = table_name
         self.sts_role_arn = sts_role_arn
         self.region_name = region_name
+        self.limit = limit
         self.filter_expression = filter_expression
         self.filter_expression_value = filter_expression_value
 
@@ -93,8 +97,17 @@ class DynamoDBSource(DataSource):
         _no_filter = (
             self.filter_expression is None and self.filter_expression_value is None
         )
+        _no_limit = self.limit is None
         if _no_filter:
-            response = self.dynamodb.scan(TableName=self.table_name)
+            if _no_limit:
+                response = self.dynamodb.scan(TableName=self.table_name)
+            else:
+                response = self.dynamodb.scan(
+                    TableName=self.table_name,
+                    Limit=self.limit,
+                )
+                if response["Count"] == self.limit:
+                    response.pop("LastEvaluatedKey")
         else:
             _key = self.filter_expression.split(" ")[-1]  # type: ignore[union-attr]
             if isinstance(self.filter_expression_value, numbers.Number):
@@ -104,11 +117,21 @@ class DynamoDBSource(DataSource):
                 _val_dtype = "S"
             _value = {_val_dtype: self.filter_expression_value}
             _expression_attribute_values = {_key: _value}
-            response = self.dynamodb.scan(
-                TableName=self.table_name,
-                FilterExpression=self.filter_expression,
-                ExpressionAttributeValues=_expression_attribute_values,
-            )
+            if _no_limit:
+                response = self.dynamodb.scan(
+                    TableName=self.table_name,
+                    FilterExpression=self.filter_expression,
+                    ExpressionAttributeValues=_expression_attribute_values,
+                )
+            else:
+                response = self.dynamodb.scan(
+                    TableName=self.table_name,
+                    FilterExpression=self.filter_expression,
+                    ExpressionAttributeValues=_expression_attribute_values,
+                    Limit=self.limit,
+                )
+                if response["Count"] == self.limit:
+                    response.pop("LastEvaluatedKey")
         items = response["Items"]
         self.table_scan_calls = 1
 
@@ -140,7 +163,7 @@ class DynamoDBSource(DataSource):
 
     def _get_schema(self) -> Schema:
         if not hasattr(self, "dataframe"):
-            self.to_dask()
+            self.to_dask_df()
 
         dtypes = self.dataframe._meta.dtypes.to_dict()
         dtypes = {n: str(t) for (n, t) in dtypes.items()}
@@ -157,12 +180,21 @@ class DynamoDBSource(DataSource):
             self._scan_table()
         return self.table_scan_calls
 
-    def to_dask(
+    def to_dask(self):
+        # No easy way to do this as have to scan the table first
+        # If parallel is desired see DynamoDBJSONSource
+        # Simple approach is to return a delayed object
+        # See to_dask_df to return a dataframe
+        return self.to_dask_delayed()
+
+    def to_dask_delayed(self):
+        self.delayed = dask.delayed(self.read())
+        return self.delayed
+
+    def to_dask_df(
         self,
         partitions: int = 1,
     ) -> dd.DataFrame:
-        # No easy way to do this as have to scan the table first
-        # If parallel is desired see DynamoDBJSONSource
         self.read()
         self.dataframe: dd.DataFrame = dd.from_pandas(self.pd_dataframe, partitions)
         return self.dataframe

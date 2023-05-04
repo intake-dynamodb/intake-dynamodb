@@ -1,4 +1,5 @@
 import botocore
+import dask
 import dask.dataframe as dd
 import intake
 import pandas as pd
@@ -197,6 +198,11 @@ def yaml_catalog() -> DataSource:
     return intake.open_catalog("tests/test.yaml")
 
 
+#######################################
+########### END OF FIXTURES ###########
+#######################################
+
+
 def test_dynamodb_source(example_small_table):
     source = DynamoDBSource(table_name=example_small_table)
     assert isinstance(source, DynamoDBSource)
@@ -209,6 +215,19 @@ def test_dynamodb_scan(example_small_table, example_small_table_items):
     )
     items = source._scan_table()
     assert items == example_small_table_items
+
+
+def test_dynamodb_scan_limit(
+    example_small_table,
+    example_small_table_items,
+):
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+        limit=1,
+    )
+    items = source._scan_table()
+    assert items == [example_small_table_items[0]]
 
 
 def test_dynamodb_scan_filtered_num(
@@ -237,7 +256,20 @@ def test_dynamodb_scan_filtered_str(
     assert items == example_small_table_items_filtered
 
 
-def test_dynamodb_to_dask(
+def test_dynamodb_to_dask(example_small_table):
+    source = DynamoDBSource(
+        table_name=example_small_table,
+        region_name="us-east-1",
+    )
+    actual_dask = source.to_dask()
+    expected_dask = dask.delayed(source.read())
+    pd_testing.assert_equal(
+        actual_dask.compute(),
+        expected_dask.compute(),
+    )
+
+
+def test_dynamodb_to_dask_df(
     example_small_table,
     example_small_table_expected_ddf,
 ):
@@ -245,8 +277,8 @@ def test_dynamodb_to_dask(
         table_name=example_small_table,
         region_name="us-east-1",
     )
-    actual_dask = source.to_dask()
-    dask_dataframe_assert_eq(actual_dask, example_small_table_expected_ddf)
+    actual_dask_df = source.to_dask_df()
+    dask_dataframe_assert_eq(actual_dask_df, example_small_table_expected_ddf)
 
 
 def test_dynamodb_read(
@@ -261,6 +293,33 @@ def test_dynamodb_read(
     pd_testing.assert_equal(
         actual_df,
         example_small_table_expected_ddf.compute(),
+    )
+
+
+def test_yaml_small_table(
+    yaml_catalog,
+    example_small_table,
+    example_small_table_expected_ddf,
+):
+    source = yaml_catalog.example_small_table
+    actual_df = source.read()
+    pd_testing.assert_equal(
+        actual_df,
+        example_small_table_expected_ddf.compute(),
+    )
+
+
+def test_yaml_small_table_limit(
+    yaml_catalog,
+    example_small_table,
+    example_small_table_expected_ddf,
+):
+    source = yaml_catalog.example_small_table_limit
+    actual_df = source.read()
+    expected_df = example_small_table_expected_ddf.compute().loc[[0]]
+    pd_testing.assert_equal(
+        actual_df,
+        expected_df,
     )
 
 
@@ -314,19 +373,6 @@ def test_dynamodb_in_different_account(
     pd_testing.assert_equal(
         actual_df,
         example_small_table_different_account_expected_ddf.compute(),
-    )
-
-
-def test_yaml_small_table(
-    yaml_catalog,
-    example_small_table,
-    example_small_table_expected_ddf,
-):
-    source = yaml_catalog.example_small_table
-    actual_df = source.read()
-    pd_testing.assert_equal(
-        actual_df,
-        example_small_table_expected_ddf.compute(),
     )
 
 

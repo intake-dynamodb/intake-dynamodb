@@ -9,6 +9,13 @@ sources:
     args:
       table_name: 'example-small-table'
       region_name: 'us-east-1'
+  example_small_table_limit:
+    description: example small dynamodb table with limit
+    driver: dynamodb
+    args:
+      table_name: 'example-small-table'
+      region_name: 'us-east-1'
+      limit: 1
   example_small_table_filtered_num:
     description: example small dynamodb table with a numeric filter
     driver: dynamodb
