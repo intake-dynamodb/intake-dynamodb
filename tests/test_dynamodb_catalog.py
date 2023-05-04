@@ -383,7 +383,7 @@ def test_yaml_big_table(
     example_big_table_expected_ddf,
 ):
     source = yaml_catalog.example_big_table
-    actual_ddf = source.to_dask()
+    actual_ddf = source.to_dask_df()
     dask_dataframe_assert_eq(
         actual_ddf,
         example_big_table_expected_ddf,
@@ -396,7 +396,7 @@ def test_yaml_different_account(
     example_small_table_different_account_expected_ddf,
 ):
     source = yaml_catalog.example_small_table_different_account
-    actual_ddf = source.to_dask()
+    actual_ddf = source.to_dask_df()
     dask_dataframe_assert_eq(
         actual_ddf, example_small_table_different_account_expected_ddf
     )
