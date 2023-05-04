@@ -394,6 +394,20 @@ def test_dynamodbjson_small_s3_export_yaml(
 
 
 @pytest.mark.s3test
+def test_dynamodbjson_small_s3_export_yaml_with_kwargs(
+    yaml_catalog,
+    example_bucket,
+    s3,
+    example_small_table,
+):
+    source_s3_export = yaml_catalog.example_small_s3_export_with_kwargs
+    s3_export_df = source_s3_export.read()
+    source_dynamodb = yaml_catalog.example_small_table
+    dynamodb_df = source_dynamodb.read()
+    pd_testing.assert_equal(s3_export_df, dynamodb_df)
+
+
+@pytest.mark.s3test
 def test_dynamodbjson_partitioned_s3_export(
     example_bucket,
     s3,
