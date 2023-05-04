@@ -58,7 +58,7 @@ sources:
       storage_options:
         profile: 'dev'
       config_kwargs:
-        read_timeout: 3600
+        read_timeout: 3600  # Default is 15
   example_partitioned_s3_export:
     description: example big dynamodb table exported to s3
     driver: dynamodbjson
